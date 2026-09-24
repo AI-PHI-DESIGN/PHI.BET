@@ -148,6 +148,79 @@ Decisión del usuario: **sin gastar dinero**. Se eligió Render gratis + un "des
 6. **Comprobar que la rama está en GitHub** antes de mandar al usuario a Render:
    `git ls-remote --heads origin` (un `git push -q` falló sin avisar y la rama no aparecía en Render).
 
+## 1e. IA más fiable, ajustada con datos reales (v0.6)
+
+1. **Datos reales para ajustar**: `openfootball/football.json` en GitHub (JSON con resultados y
+   calendario; `raw.githubusercontent.com` **sí** es accesible desde el entorno de desarrollo,
+   aunque football-data.co.uk y The Odds API estén bloqueados). Clonar con
+   `git clone --depth 1 https://github.com/openfootball/football.json` en el scratchpad.
+   Ojo: el marcador viene como `{"ft": [2, 1]}` **o** como `[2, 1]`; sin marcador = sin jugar.
+2. **Tres mejoras del Poisson** (`models/poisson.py`, parámetros de `PoissonModel`):
+   - Ponderación temporal: peso `0,5^(días/half_life_days)` desde el último partido.
+   - Regresión a la media: `prior_weight` partidos ficticios de fuerza 1 en cada media
+     (local/visitante, ataque/defensa). Es lo que más arregla la calibración en confianza alta.
+   - Dixon-Coles con `rho` fijo (corrige 0-0, 1-0, 0-1, 1-1); se renormaliza como antes.
+3. **Ajuste**: `scripts/tune_model.py <ruta a football.json>` prueba una rejilla con la
+   evaluación walk-forward en las 5 ligas y ordena por Brier. Resultado: `half_life_days=365`,
+   `prior_weight=2`, `rho=-0,08` (el óptimo es plano: cualquier vecino da casi lo mismo).
+   Brier 0,5986 → 0,5921, log-loss 1,0067 → 0,9926, calibración 1,7 → 0,4 puntos, acierto con
+   ≥80 % de confianza 82,2 % → 86,4 %. Son los valores por defecto (constantes con el porqué).
+4. `evaluation.walk_forward(..., make_model=...)` acepta cualquier configuración del modelo.
+5. Solo se cambian los valores por defecto si mejoran Brier **y** calibración con datos
+   reales; los datos de ejemplo (fuerzas fijas) no sirven para decidir esto.
+
+## 1f. Cinco ligas (v0.6)
+
+1. **Registro** (`app/leagues.py`): clave (`laliga`, `premier`, `seriea`, `bundesliga`,
+   `ligue1`), nombre, país y código en cada proveedor (football-data `SP1/E0/I1/D1/F1`, The Odds
+   API `soccer_spain_la_liga/soccer_epl/soccer_italy_serie_a/soccer_germany_bundesliga/
+   soccer_france_ligue_one`, openfootball `es.1/en.1/it.1/de.1/fr.1`).
+2. **Proveedores parametrizados por liga** (`division=` / `sport=`). `fixtures.csv` de
+   football-data trae todas las ligas: se descarga **una vez por ronda** y se filtra por `Div`.
+3. **openfootball** (`providers/openfootball.py`): respaldo de resultados si football-data
+   falla (no se mezclan las dos fuentes, para no duplicar partidos si un nombre no casa) y
+   calendario de la **próxima jornada** (desde el primer partido pendiente hasta 7 días después,
+   así aparece aunque haya parón de selecciones). Esos partidos salen sin cuotas.
+   `merge_fixtures` evita duplicados: mismo día y mismo local **o** mismo visitante.
+4. **Nombres** (`teams.py`): alias de las 5 ligas para los 3 proveedores. Comprobar con un script
+   que **todos** los nombres de openfootball, de football-data y de The Odds API caen en una
+   clave de `ALIASES` (ninguno "sin mapear") antes de dar por buena una liga nueva.
+5. **Créditos de The Odds API**: cada liga cuesta 2 créditos por consulta. `ODDS_API_LEAGUES`
+   (por defecto `laliga`) decide cuáles van por la API; el resto usa football-data. El reparto
+   (`paced_interval`) usa el coste de la **ronda completa** y reserva `/scores` × nº de ligas.
+6. **Runtime**: un `LeagueData` por liga con su `PredictionEngine`. `PredictionEngine(...,
+   base=anterior)` reutiliza modelo y evaluación si los resultados no cambian (las cuotas cambian
+   a menudo y reentrenar 5 ligas en el plan gratis de Render es lento).
+7. **Arranque sin bloquear**: la primera carga va en segundo plano; `/api/health` responde
+   `loading` desde el primer segundo (Render espera a que el puerto responda).
+8. **API**: `?league=` en todos los endpoints (404 si no existe, 503 si aún carga) y
+   `/api/leagues`. `/api/status` lleva `leagues` y `default_league`.
+9. **Web**: fila de botones de liga (se recuerda en `localStorage`), la liga se añade a cada
+   consulta con `withLeague()`, y mientras la IA se prepara se consulta el estado cada 5 s.
+10. **Probar el modo real aquí**: `SSL_CERT_FILE=/root/.ccr/ca-bundle.crt DATA_SOURCE=live
+    CACHE_DIR=<scratchpad>/cache server.sh start` → football-data da 403 y todo sale de
+    openfootball. Esperar a que `/api/status` tenga las 5 ligas listas **y** las cuotas
+    intentadas antes de mirar errores (las ligas están listas antes de que acabe la ronda de cuotas).
+
+## 1g. App instalable en el móvil (PWA, v0.6)
+
+1. `web/manifest.json` (nombre, `display: standalone`, colores `#07050b`, iconos 192/512 y
+   512 `maskable`), `web/sw.js` y `web/icons/`.
+2. **Icono**: `icons/icon.svg` (φ morado sobre negro) → PNG con Playwright (`setContent` del SVG
+   a su tamaño y `screenshot`): `icon-192.png`, `icon-512.png`, `apple-touch-icon.png` (180).
+   El φ cabe en la zona segura del icono `maskable`.
+3. **Service worker**: página e iconos de la caché (y se actualizan en segundo plano); `/api/`
+   siempre de la red y, sin conexión, la última respuesta guardada. Cambiar `CACHE` (`phibet-v1`)
+   si cambia la lista de ficheros base.
+4. `<head>`: `manifest`, `theme-color`, `apple-touch-icon`, `apple-mobile-web-app-*`,
+   `viewport-fit=cover` y `env(safe-area-inset-*)` en cabecera, pie y barra inferior.
+5. **Instalar**: botón "Instalar app" con `beforeinstallprompt` (Android/Chrome); en iPhone,
+   aviso una sola vez (Compartir → Añadir a pantalla de inicio), recordado en `localStorage`.
+6. **Móvil (≤600 px)**: las pestañas pasan a una barra fija inferior con icono y texto corto.
+7. **Comprobar** (Playwright, contexto `isMobile`): el manifest carga, `navigator.serviceWorker
+   .controller` existe tras recargar, con `context.setOffline(true)` la página sigue mostrando
+   las tarjetas, y con user-agent de iPhone aparece el aviso.
+
 ## 2. Verificación antes de cada commit
 
 ```bash
@@ -184,7 +257,11 @@ Trucos CSS: los hijos de grid llevan `min-width:0`, las columnas usan
 Para arrancar y parar el servidor, usar un script en el scratchpad que guarde el PID
 (`server.sh start|stop`: `nohup uvicorn … & echo $! > uv.pid` / `kill $(cat uv.pid)`).
 **No** buscar el proceso con `pkill -f` ni `ps | grep` con el comando en la misma línea: el
-patrón coincide con la propia shell y la mata. Para liberar un puerto: `fuser -k 8765/tcp`. Si una captura falla con 404 en un endpoint nuevo,
+patrón coincide con la propia shell y la mata. El `server.sh` del scratchpad acepta
+`DATA_SOURCE` y `CACHE_DIR` por entorno para probar el modo real.
+
+En capturas `fullPage` del móvil la barra de pestañas fija aparece a media página: es cosa de
+la captura, no de la web. Para liberar un puerto: `fuser -k 8765/tcp`. Si una captura falla con 404 en un endpoint nuevo,
 probablemente siga vivo un servidor antiguo en el puerto.
 
 En el navegador, probar también las interacciones: en el buscador, que subir el riesgo o bajar el
@@ -206,6 +283,10 @@ acierto suba la mejor cuota, que las combinadas aparezcan y que cambiar de día 
   una serie = sin leyenda de color extra; referencias como línea discontinua gris; tooltip al
   pasar el ratón; texto con colores de texto, no con el de la serie).
 - Escapar siempre con `esc()` el texto antes de meterlo en `innerHTML`.
+- En CSS (anchos, posiciones) usar `cssPct()` (punto decimal), **nunca** `pct()`: `24,2%` es
+  CSS inválido y la barra desaparece (pasó con las barras 1X2 hasta la v0.6).
+- Gráficos con muchos puntos en el eje X (p. ej. 20 meses): mostrar una etiqueta de cada N
+  para que no se solapen en el móvil.
 
 ## Hoja de ruta
 
@@ -219,8 +300,12 @@ acierto suba la mejor cuota, que las combinadas aparezcan y que cambiar de día 
       plano con reparto de créditos, caché, barra de estado. *Pendiente: probarlo contra las APIs
       reales (la red del entorno de desarrollo las bloqueaba).*
 - [x] **v0.5.1 — Despliegue gratis**: `render.yaml` para Render (plan gratis) + ping de
-      cron-job.org para que no se duerma. *Pendiente: que el usuario lo conecte en su cuenta.*
-- [ ] **v0.6 — Mejor modelo** (sobre todo la calibración por encima del 80%): ponderación temporal (lo reciente pesa más), Dixon-Coles,
+      cron-job.org para que no se duerma. Publicada en https://phi-bet.onrender.com
+      (el entorno de desarrollo no puede abrirla: la red la bloquea).
+- [x] **v0.6 — App, IA y ligas**: app instalable en el móvil (PWA), IA ajustada con 3.659
+      partidos reales (ponderación temporal, regresión a la media, Dixon-Coles), 5 ligas con
+      openfootball de respaldo, arranque sin bloquear.
+- [ ] **v0.7 — Mejor modelo**: ajustar parámetros por liga, `rho` por máxima verosimilitud,
       después gradient boosting con forma, lesiones y descanso; comparar siempre con la evaluación.
-- [ ] **v0.7 — App**: más ligas y deportes, ficha de equipo, comparador de equipos, asistente
+- [ ] **v0.8 — Más**: segundas divisiones y otros deportes, ficha de equipo, comparador de equipos, asistente
       con Claude que explique cada pronóstico en lenguaje natural.

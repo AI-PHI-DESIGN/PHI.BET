@@ -6,19 +6,20 @@ partidos ya jugados y tiene un **buscador de cuotas**: eliges acierto mínimo y 
 las mejores cuotas del día que lo cumplen. **No es una app para apostar**: no acepta apuestas ni
 gestiona dinero; las cuotas son solo informativas.
 
-## Qué hace (v0.5)
+## Qué hace (v0.6)
 
 | Pieza | Descripción |
 |---|---|
-| Modelo Poisson | Fuerza de ataque/defensa por equipo → goles esperados, 1X2, más de 2,5 goles, marcan ambos, marcador más probable |
+| Modelo Poisson | Fuerza de ataque/defensa por equipo → goles esperados, 1X2, más de 2,5 goles, marcan ambos, marcador más probable. Da más peso a los partidos recientes, no se confía con pocos datos y corrige los empates a pocos goles (Dixon-Coles); ajustado con 3.659 partidos reales |
 | Modelo Elo | Ranking dinámico de equipos, actualizado partido a partido |
 | Buscador de cuotas | Por día: acierto mínimo (probabilidad de la IA), riesgo (cuánto puede discrepar la IA de la casa) y combinadas de hasta 3 partidos; ordenado por cuota y con el acierto histórico de ese umbral |
 | Rendimiento de la IA | Cada partido jugado se predice solo con los anteriores (walk-forward): % de acierto, Brier, log-loss, error en goles, calibración, acierto según la confianza y comparación con una referencia |
-| Datos en vivo (LaLiga) | Resultados de football-data.co.uk y cuotas de The Odds API (mejor cuota y media de varias casas), actualizados en segundo plano 24/7 mientras la app está encendida; la frecuencia se ajusta a los créditos del plan |
-| API REST | FastAPI: `/api/predictions`, `/api/predictions/{id}`, `/api/picks`, `/api/performance`, `/api/ratings`, `/api/status`, `/api/health` (documentación interactiva en `/docs`) |
-| Web | Panel morado y negro con tres pestañas: **Predicciones**, **Buscador de cuotas** y **Rendimiento de la IA** |
+| 5 ligas | LaLiga, Premier League, Serie A, Bundesliga y Ligue 1, con selector en la web |
+| Datos en vivo | Resultados de football-data.co.uk (respaldo: openfootball), calendario de la próxima jornada, y cuotas de football-data.co.uk y The Odds API (mejor cuota y media de varias casas), actualizados en segundo plano 24/7; la frecuencia se ajusta a los créditos del plan |
+| API REST | FastAPI: `/api/leagues`, `/api/predictions`, `/api/predictions/{id}`, `/api/picks`, `/api/performance`, `/api/ratings`, `/api/status`, `/api/health`; todas aceptan `?league=laliga|premier|seriea|bundesliga|ligue1` (documentación interactiva en `/docs`) |
+| Web y app del móvil | Panel morado y negro con tres pestañas: **Predicciones**, **Buscador de cuotas** y **Rendimiento de la IA**. Se instala en Android e iPhone (icono en la pantalla de inicio, pantalla completa, funciona sin conexión con los últimos datos) |
 
-Por defecto arranca con **datos de ejemplo** (liga ficticia). Para LaLiga real, ver abajo.
+Por defecto arranca con **datos de ejemplo** (liga ficticia). Para las ligas reales, ver abajo.
 
 ## Arrancar
 
@@ -30,14 +31,18 @@ cd backend
 # Abrir http://localhost:8000  ·  documentación de la API en /docs
 ```
 
-### LaLiga real, actualizada 24/7
+### Ligas reales, actualizadas 24/7
 
-1. Crea una clave gratis en [the-odds-api.com](https://the-odds-api.com) (500 créditos/mes).
-2. Copia `.env.example` como `.env` y pon `DATA_SOURCE=live` y `ODDS_API_KEY=tu_clave`.
-3. Arranca igual que arriba. Al iniciar descarga 3 temporadas de resultados y las cuotas del
-   momento, y después se actualiza sola: resultados cada 6 h, resultados recientes cada 12 h y
-   cuotas tan a menudo como permitan tus créditos (con 500/mes, unas cada 4 h; con un plan de
-   pago, cada 5 min). La barra de estado de la web dice cuándo se actualizó todo.
+1. (Opcional) Crea una clave gratis en [the-odds-api.com](https://the-odds-api.com) (500 créditos/mes).
+2. Copia `.env.example` como `.env` y pon `DATA_SOURCE=live` (y `ODDS_API_KEY=tu_clave` si la tienes).
+3. Arranca igual que arriba. El servidor responde al momento y en segundo plano descarga 3
+   temporadas de las 5 ligas y entrena la IA (un par de minutos). Después se actualiza sola:
+   resultados cada 6 h, resultados recientes cada 12 h y cuotas tan a menudo como permitan tus
+   créditos (con 500/mes y solo LaLiga en The Odds API, unas cada 4 h; con un plan de pago,
+   cada 5 min). La barra de estado de la web dice cuándo se actualizó todo.
+
+`LEAGUES` elige las ligas (por defecto, las 5) y `ODDS_API_LEAGUES` cuáles usan The Odds API
+(por defecto solo `laliga`: cada liga gasta créditos). Ver `.env.example`.
 
 Sin clave también funciona con `DATA_SOURCE=live`: las cuotas salen del fichero gratuito de
 football-data.co.uk, que solo se actualiza un par de veces por semana.
@@ -64,6 +69,12 @@ Límites del plan gratis: la primera carga tras un reinicio tarda un poco (desca
 y el disco no es permanente, así que la caché se vuelve a descargar al redesplegar. No afecta
 a los datos: siempre salen de las fuentes.
 
+### Instalar en el móvil
+
+Abre la web en el móvil y:
+- **Android (Chrome)**: pulsa el botón **Instalar app** de arriba (o menú ⋮ → *Instalar aplicación*).
+- **iPhone (Safari)**: botón **Compartir** → **Añadir a pantalla de inicio**. La web lo recuerda con un aviso.
+
 Tests:
 
 ```bash
@@ -88,16 +99,18 @@ backend/
     picks.py         Buscador de cuotas por acierto mínimo y riesgo
     config.py        Configuración (variables de entorno / .env)
     runtime.py       Actualizador 24/7 y reparto de créditos
-    teams.py         Nombres de equipos unificados entre proveedores
-    providers/       football_data.py (resultados y cuotas gratis), odds_api.py (cuotas en vivo)
+    leagues.py       Ligas y su código en cada proveedor
+    teams.py         Nombres de equipos unificados entre proveedores (5 ligas)
+    providers/       football_data.py (resultados y cuotas gratis), odds_api.py (cuotas en vivo),
+                     openfootball.py (resultados y calendario, respaldo gratis)
     data.py          Carga de partidos (CSV) y próximos partidos (JSON)
     models/
       poisson.py     Modelo de goles
       elo.py         Ratings Elo
   data/              matches.csv, fixtures.json (ejemplo) y cache/ (descargas, no se sube)
-  scripts/           generate_sample_data.py
+  scripts/           generate_sample_data.py, tune_model.py (ajuste del modelo con datos reales)
   tests/             pytest
-web/index.html       Panel
+web/                 index.html (panel), manifest.json, sw.js e icons/ (app instalable)
 docs/PLAYBOOK.md     Cómo se construye este proyecto (pasos y convenciones)
 ```
 
