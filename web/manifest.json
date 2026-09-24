@@ -1,0 +1,17 @@
+{
+  "name": "PHI.BET · IA de análisis deportivo",
+  "short_name": "PHI.BET",
+  "description": "Predicciones de fútbol, buscador de cuotas y rendimiento real de la IA.",
+  "lang": "es",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#07050b",
+  "theme_color": "#07050b",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

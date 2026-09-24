@@ -2,8 +2,17 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>PHI.BET</title>
+  <meta name="description" content="IA de análisis deportivo: predicciones, buscador de cuotas y rendimiento real." />
+  <meta name="theme-color" content="#07050b" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="PHI.BET" />
   <style>
     :root {
       --bg:#07050b; --card:#110c1a; --card-2:#181126; --line:#2a2040;
@@ -12,7 +21,7 @@
     }
     * { box-sizing:border-box; }
     body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--text); }
-    header { padding:16px; border-bottom:1px solid var(--line); background:linear-gradient(180deg,#140b24,var(--bg)); }
+    header { padding:16px; padding-top:max(16px, env(safe-area-inset-top)); border-bottom:1px solid var(--line); background:linear-gradient(180deg,#140b24,var(--bg)); }
     .head-inner { max-width:1100px; margin:0 auto; display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
     header h1 { margin:0; font-size:22px; letter-spacing:1px; }
     header h1 span { color:var(--purple-soft); }
@@ -86,8 +95,27 @@
     .statusbar .live { display:inline-flex; align-items:center; gap:6px; color:var(--text); }
     .statusbar .live::before { content:''; width:8px; height:8px; border-radius:50%; background:var(--purple); box-shadow:0 0 0 3px #8b5cf633; }
     .statusbar .warn { color:var(--warn, #c4b5fd); }
-    footer { max-width:1100px; margin:0 auto; padding:16px; color:var(--muted); font-size:13px; }
-    @media (max-width:600px) { header p { display:none; } nav { margin-left:auto; } .kpi .val { font-size:18px; } }
+    .install { display:none; background:var(--purple); color:#fff; border:0; border-radius:8px; padding:8px 12px; font:inherit; font-size:13px; cursor:pointer; }
+    .install.show { display:inline-block; }
+    .ios-hint { display:none; position:fixed; left:12px; right:12px; bottom:max(12px, env(safe-area-inset-bottom)); z-index:10;
+      background:var(--card-2); border:1px solid var(--purple); border-radius:12px; padding:12px 40px 12px 14px; font-size:14px; line-height:1.4; }
+    .ios-hint.show { display:block; }
+    .ios-hint button { position:absolute; top:6px; right:6px; background:none; border:0; color:var(--muted); font-size:20px; cursor:pointer; padding:4px 8px; }
+    footer { max-width:1100px; margin:0 auto; padding:16px; padding-bottom:max(16px, env(safe-area-inset-bottom)); color:var(--muted); font-size:13px; }
+    nav .ico, nav .short { display:none; }
+    @media (max-width:600px) {
+      header p { display:none; } .kpi .val { font-size:18px; }
+      /* En el móvil las pestañas van abajo, como en una app. */
+      nav { position:fixed; left:0; right:0; bottom:0; z-index:5; border-radius:0; border:0; border-top:1px solid var(--line);
+        background:#0d0915f2; backdrop-filter:blur(8px); padding:6px 6px max(6px, env(safe-area-inset-bottom)); }
+      nav button { flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; padding:6px 4px; font-size:12px; }
+      nav .ico { display:block; font-size:18px; line-height:1; }
+      nav .long { display:none; } nav .short { display:inline; }
+      nav button.active { background:none; color:var(--purple-soft); }
+      body { padding-bottom:72px; }
+      .ios-hint { bottom:calc(76px + env(safe-area-inset-bottom)); }
+      .install { margin-left:auto; }
+    }
   </style>
 </head>
 <body>
@@ -95,10 +123,11 @@
     <div class="head-inner">
       <h1>PHI<span>.</span>BET</h1>
       <p>IA de análisis deportivo · <span id="league">…</span></p>
+      <button class="install" id="install">Instalar app</button>
       <nav>
-        <button data-view="predictions" class="active">Predicciones</button>
-        <button data-view="picks">Buscador de cuotas</button>
-        <button data-view="performance">Rendimiento de la IA</button>
+        <button data-view="predictions" class="active"><span class="ico" aria-hidden="true">◎</span>Predicciones</button>
+        <button data-view="picks"><span class="ico" aria-hidden="true">⌕</span><span class="long">Buscador de cuotas</span><span class="short">Cuotas</span></button>
+        <button data-view="performance"><span class="ico" aria-hidden="true">↗</span><span class="long">Rendimiento de la IA</span><span class="short">Rendimiento</span></button>
       </nav>
     </div>
   </header>
@@ -191,9 +220,16 @@
   <footer>Las predicciones son estimaciones estadísticas, no garantías.
     PHI.BET no acepta apuestas ni gestiona dinero; si apuestas en otro sitio, hazlo con responsabilidad y solo si eres mayor de edad.</footer>
 
+  <div class="ios-hint" id="ios-hint" role="dialog" aria-label="Instalar en iPhone">
+    <b>Instala PHI.BET en tu iPhone:</b> pulsa el botón <b>Compartir</b> de Safari y luego
+    <b>«Añadir a pantalla de inicio»</b>.
+    <button aria-label="Cerrar" id="ios-hint-close">×</button>
+  </div>
+
   <script>
     const num = (n, d = 1) => n.toLocaleString('es-ES', { maximumFractionDigits: d });
     const pct = p => num(Math.round(p * 1000) / 10) + '%';
+    const cssPct = p => (p * 100).toFixed(2) + '%'; // para CSS: punto decimal, nunca coma
     const fix = (n, d) => n.toFixed(d).replace('.', ',');
     const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const PICK = { home: 'Gana local', draw: 'Empate', away: 'Gana visitante' };
@@ -237,7 +273,7 @@
           <div class="teams">${esc(p.home_team)} vs ${esc(p.away_team)}</div>
           <div class="meta">${fmtDay(p.date)}${p.kickoff ? ' · ' + hhmm(p.kickoff) : ''} · Elo ${num(p.elo.home)} – ${num(p.elo.away)}</div>
           <div class="pick">Pronóstico: ${esc(who)} · ${pct(p.confidence)}</div>
-          <div class="bar"><div style="width:${pct(p.probs.home)}"></div><div style="width:${pct(p.probs.draw)}"></div><div style="width:${pct(p.probs.away)}"></div></div>
+          <div class="bar"><div style="width:${cssPct(p.probs.home)}"></div><div style="width:${cssPct(p.probs.draw)}"></div><div style="width:${cssPct(p.probs.away)}"></div></div>
           <div class="probs">
             <span><span class="dot" style="background:var(--purple)"></span>1 · ${pct(p.probs.home)}</span>
             <span><span class="dot" style="background:var(--draw)"></span>X · ${pct(p.probs.draw)}</span>
@@ -283,7 +319,7 @@
       document.getElementById('confidence').innerHTML = '<tr><th>La IA daba al menos</th><th>Casos</th><th>Acertó</th><th style="width:40%"></th></tr>' +
         rows.filter(r => r.count).map(r => `<tr><td class="num">${pct(r.threshold)}</td><td class="num">${r.count}</td>
           <td class="num"><b>${pct(r.hit_rate)}</b> ${r.hit_rate >= r.threshold ? '<span class="ok">✓</span>' : '<span class="ko">↓ por debajo</span>'}</td>
-          <td><div class="meter"><span style="width:${pct(r.hit_rate)}"></span><i style="left:${pct(r.threshold)}"></i></div></td></tr>`).join('');
+          <td><div class="meter"><span style="width:${cssPct(r.hit_rate)}"></span><i style="left:${cssPct(r.threshold)}"></i></div></td></tr>`).join('');
     }
 
     const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
@@ -467,6 +503,28 @@
     let saved = 'predictions';
     try { saved = localStorage.getItem('phibet-view') || 'predictions'; } catch {}
     showView(saved);
+
+    // --- App instalable (móvil) ---------------------------------------------
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+    const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+    let installPrompt = null;
+    const installBtn = document.getElementById('install');
+    window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installPrompt = e; installBtn.classList.add('show'); });
+    installBtn.addEventListener('click', async () => {
+      if (!installPrompt) return;
+      installPrompt.prompt(); await installPrompt.userChoice.catch(() => {});
+      installPrompt = null; installBtn.classList.remove('show');
+    });
+    window.addEventListener('appinstalled', () => installBtn.classList.remove('show'));
+    // iPhone/iPad no avisa para instalar: se explica cómo hacerlo una vez.
+    const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    let hinted = false;
+    try { hinted = localStorage.getItem('phibet-ios-hint') === '1'; } catch {}
+    if (ios && !standalone && !hinted) document.getElementById('ios-hint').classList.add('show');
+    document.getElementById('ios-hint-close').addEventListener('click', () => {
+      document.getElementById('ios-hint').classList.remove('show');
+      try { localStorage.setItem('phibet-ios-hint', '1'); } catch {}
+    });
   </script>
 </body>
 </html>
