@@ -145,6 +145,8 @@ Decisión del usuario: **sin gastar dinero**. Se eligió Render gratis + un "des
 4. **Comprobar antes de subir**: validar el YAML y lanzar en local exactamente el `startCommand`
    con `PORT` definido y `DATA_SOURCE=sample`; `/api/health` debe dar `ok` y `/` un 200.
 5. Pasos para el usuario en el README, sección *Desplegar gratis*.
+6. **Comprobar que la rama está en GitHub** antes de mandar al usuario a Render:
+   `git ls-remote --heads origin` (un `git push -q` falló sin avisar y la rama no aparecía en Render).
 
 ## 2. Verificación antes de cada commit
 
