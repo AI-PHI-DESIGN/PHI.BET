@@ -1,20 +1,24 @@
 # PHI.BET
 
 IA de **análisis deportivo**. Predice el resultado de los próximos partidos (probabilidades de
-1/X/2, goles esperados, marcador más probable…) y mide con honestidad cuánto acierta con los
-partidos ya jugados. **No es una app para apostar**: no hay cuotas, apuestas ni dinero.
+1/X/2, goles esperados, marcador más probable…), mide con honestidad cuánto acierta con los
+partidos ya jugados y tiene un **buscador de cuotas**: eliges acierto mínimo y riesgo, y muestra
+las mejores cuotas del día que lo cumplen. **No es una app para apostar**: no acepta apuestas ni
+gestiona dinero; las cuotas son solo informativas.
 
-## Qué hace (v0.3)
+## Qué hace (v0.4)
 
 | Pieza | Descripción |
 |---|---|
 | Modelo Poisson | Fuerza de ataque/defensa por equipo → goles esperados, 1X2, más de 2,5 goles, marcan ambos, marcador más probable |
 | Modelo Elo | Ranking dinámico de equipos, actualizado partido a partido |
-| Rendimiento de la IA | Cada partido jugado se predice solo con los anteriores (walk-forward): % de acierto, Brier, log-loss, error en goles, calibración y comparación con una referencia |
-| API REST | FastAPI: `/api/predictions`, `/api/predictions/{id}`, `/api/performance`, `/api/ratings`, `/api/health` (documentación interactiva en `/docs`) |
-| Web | Panel morado y negro con dos pestañas: **Predicciones** y **Rendimiento de la IA** |
+| Buscador de cuotas | Por día: acierto mínimo (probabilidad de la IA), riesgo (cuánto puede discrepar la IA de la casa) y combinadas de hasta 3 partidos; ordenado por cuota y con el acierto histórico de ese umbral |
+| Rendimiento de la IA | Cada partido jugado se predice solo con los anteriores (walk-forward): % de acierto, Brier, log-loss, error en goles, calibración, acierto según la confianza y comparación con una referencia |
+| API REST | FastAPI: `/api/predictions`, `/api/predictions/{id}`, `/api/picks`, `/api/performance`, `/api/ratings`, `/api/health` (documentación interactiva en `/docs`) |
+| Web | Panel morado y negro con tres pestañas: **Predicciones**, **Buscador de cuotas** y **Rendimiento de la IA** |
 
-Los datos son **sintéticos** (liga ficticia de 8 equipos, 3 temporadas, generada con semilla fija).
+Los datos y las cuotas son **sintéticos** (liga ficticia de 8 equipos, 3 temporadas y 2 jornadas
+futuras, generada con semilla fija).
 
 ## Arrancar
 
@@ -45,7 +49,9 @@ backend/
   app/
     main.py          API FastAPI + sirve la web
     service.py       PredictionEngine: entrena modelos y genera el análisis
-    evaluation.py    Rendimiento de la IA (walk-forward, métricas, calibración)
+    evaluation.py    Rendimiento de la IA (walk-forward, métricas, calibración, acierto por confianza)
+    markets.py       Mercados (1X2, doble oportunidad, goles, ambos marcan) y probabilidad de la casa
+    picks.py         Buscador de cuotas por acierto mínimo y riesgo
     data.py          Carga de partidos (CSV) y próximos partidos (JSON)
     models/
       poisson.py     Modelo de goles
@@ -63,4 +69,5 @@ Ver [docs/PLAYBOOK.md](docs/PLAYBOOK.md#hoja-de-ruta).
 
 ## Aviso
 
-Las predicciones son estimaciones estadísticas, no garantías.
+Las predicciones son estimaciones estadísticas, no garantías. PHI.BET no acepta apuestas ni
+gestiona dinero; si apuestas en otro sitio, hazlo con responsabilidad y solo si eres mayor de edad.

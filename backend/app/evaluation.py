@@ -9,12 +9,14 @@ from __future__ import annotations
 import math
 from collections import defaultdict
 
+from app import markets
 from app.data import Match
 from app.models.poisson import PoissonModel
 
 OUTCOMES = ("home", "draw", "away")
 MIN_TRAINING = 56  # una temporada completa de 8 equipos antes de empezar a evaluar
 CALIBRATION_BINS = 5
+CONFIDENCE_THRESHOLDS = (0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9)
 
 
 def outcome(home_goals: int, away_goals: int) -> str:
@@ -43,6 +45,7 @@ def walk_forward(matches: list[Match], min_training: int = MIN_TRAINING) -> list
         probs = {"home": p.home, "draw": p.draw, "away": p.away}
         pick = max(probs, key=probs.get)
         actual = outcome(m.home_goals, m.away_goals)
+        hits = markets.outcomes(m.home_goals, m.away_goals)
         rows.append(
             {
                 "date": m.date,
@@ -57,9 +60,20 @@ def walk_forward(matches: list[Match], min_training: int = MIN_TRAINING) -> list
                 "correct": pick == actual,
                 "brier": round(brier(probs, actual), 4),
                 "log_loss": round(-math.log(max(probs[actual], 1e-12)), 4),
+                "markets": {k: {"prob": round(v, 4), "hit": hits[k]} for k, v in markets.model_probabilities(p).items()},
             }
         )
     return rows
+
+
+def hit_rate_at(rows: list[dict], threshold: float) -> dict:
+    """De todas las selecciones (todos los mercados) a las que la IA dio >= threshold, cuántas acertaron."""
+    hits = [sel["hit"] for r in rows for sel in r["markets"].values() if sel["prob"] >= threshold]
+    return {
+        "threshold": threshold,
+        "count": len(hits),
+        "hit_rate": round(sum(hits) / len(hits), 4) if hits else None,
+    }
 
 
 def summarize(rows: list[dict], training: list[Match] | None = None) -> dict:
@@ -112,6 +126,7 @@ def summarize(rows: list[dict], training: list[Match] | None = None) -> dict:
             }
             for month, rs in sorted(by_month.items())
         ],
+        "by_confidence": [hit_rate_at(rows, t) for t in CONFIDENCE_THRESHOLDS],
         "calibration": [
             {
                 "range": [i / CALIBRATION_BINS, (i + 1) / CALIBRATION_BINS],

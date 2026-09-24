@@ -19,7 +19,7 @@ def test_predictions_and_detail():
     assert detail["id"] == first["id"]
     assert abs(sum(detail["probs"].values()) - 1) < 1e-3
     assert detail["pick"] in detail["probs"]
-    assert "odds" not in detail
+    assert set(detail["markets"]) >= {"1", "X", "2", "1X", "over25", "btts_yes"}
 
 
 def test_unknown_fixture_404():
@@ -35,9 +35,33 @@ def test_performance():
     assert len(client.get("/api/performance?recent=500").json()["recent"]) == perf["evaluated"]
 
 
-def test_no_betting_endpoints():
+def test_no_money_endpoints():
+    # La app muestra cuotas como información, pero no gestiona dinero ni registra apuestas.
     for path in ("/api/value-bets", "/api/accounting/summary"):
         assert client.get(path).status_code == 404
+
+
+def test_picks():
+    r = client.get("/api/picks?min_prob=0.5&risk=high&limit=5").json()
+    assert r["date"] == r["dates"][0]
+    assert r["historical"]["count"] > 0
+    assert 0 < len(r["picks"]) <= 5
+    odds = [p["odds"] for p in r["picks"]]
+    assert odds == sorted(odds, reverse=True)
+    assert all(p["prob"] >= 0.5 for p in r["picks"])
+
+
+def test_picks_validation():
+    assert client.get("/api/picks?risk=extremo").status_code == 422
+    assert client.get("/api/picks?min_prob=1.5").status_code == 422
+    assert client.get("/api/picks?combine=4").status_code == 422
+    assert client.get("/api/picks?date=1999-01-01").status_code == 404
+
+
+def test_performance_by_confidence():
+    conf = client.get("/api/performance?recent=0").json()["by_confidence"]
+    counts = [c["count"] for c in conf]
+    assert counts == sorted(counts, reverse=True)  # umbral más alto, menos casos
 
 
 def test_ratings():

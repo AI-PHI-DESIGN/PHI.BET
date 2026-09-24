@@ -57,6 +57,31 @@
     .legend { display:flex; flex-wrap:wrap; gap:14px; font-size:12px; color:var(--muted); margin-top:6px; align-items:center; }
     .swatch-line { display:inline-block; width:18px; border-top:2px dashed var(--muted); vertical-align:middle; margin-right:6px; }
     .note { color:var(--muted); font-size:13px; line-height:1.5; margin:0; }
+    /* Buscador de cuotas */
+    .controls { display:grid; gap:18px; grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr)); align-items:start; }
+    .control > .lbl { display:block; font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px; }
+    .control .help { font-size:12px; color:var(--muted); margin-top:6px; line-height:1.4; }
+    .big { font-size:26px; font-weight:700; font-variant-numeric:tabular-nums; color:var(--purple-soft); }
+    select { background:var(--card-2); border:1px solid var(--line); color:var(--text); border-radius:8px; padding:8px 10px; font:inherit; font-size:14px; width:100%; }
+    input[type=range] { width:100%; accent-color:var(--purple); }
+    .seg { display:flex; flex-wrap:wrap; gap:2px; background:var(--card-2); border-radius:8px; padding:2px; }
+    .seg button { flex:1; background:none; border:0; color:var(--muted); padding:7px 10px; border-radius:6px; font:inherit; font-size:13px; cursor:pointer; }
+    .seg button.active { background:var(--purple); color:#fff; }
+    .check { display:flex; gap:8px; align-items:flex-start; font-size:13px; color:var(--muted); cursor:pointer; }
+    .check input { accent-color:var(--purple); margin-top:2px; }
+    .banner { background:var(--card-2); border:1px solid var(--line); border-left:3px solid var(--purple); border-radius:10px; padding:12px 14px; font-size:14px; line-height:1.5; }
+    .picks { display:grid; gap:10px; }
+    .pickcard { display:grid; grid-template-columns:auto 1fr auto; gap:14px; align-items:center; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 14px; }
+    .rank { color:var(--muted); font-size:13px; width:22px; }
+    .sel { font-size:14px; line-height:1.5; } .sel .meta { font-size:12px; }
+    .odds { text-align:right; } .odds .big { display:block; }
+    .odds small { color:var(--muted); font-size:12px; white-space:nowrap; }
+    .tag { display:inline-block; margin-top:4px; padding:2px 8px; border-radius:6px; line-height:1.4; font-size:11px; border:1px solid var(--line); color:var(--muted); }
+    .tag.strong { border-color:var(--purple); color:var(--purple-soft); }
+    .meter { position:relative; height:8px; background:var(--card-2); border-radius:4px; min-width:120px; }
+    .meter span { position:absolute; left:0; top:0; bottom:0; background:var(--purple); border-radius:4px; }
+    .meter i { position:absolute; top:-3px; bottom:-3px; width:2px; background:var(--text); }
+    @media (max-width:600px) { .pickcard { grid-template-columns:1fr auto; } .rank { display:none; } }
     footer { max-width:1100px; margin:0 auto; padding:16px; color:var(--muted); font-size:13px; }
     @media (max-width:600px) { header p { display:none; } nav { margin-left:auto; } .kpi .val { font-size:18px; } }
   </style>
@@ -68,6 +93,7 @@
       <p>IA de análisis deportivo</p>
       <nav>
         <button data-view="predictions" class="active">Predicciones</button>
+        <button data-view="picks">Buscador de cuotas</button>
         <button data-view="performance">Rendimiento de la IA</button>
       </nav>
     </div>
@@ -77,7 +103,7 @@
     <!-- PREDICCIONES -->
     <div class="view active" id="view-predictions">
       <section>
-        <h2>Próxima jornada</h2>
+        <h2>Próximos partidos</h2>
         <div class="grid" id="predictions"></div>
         <div class="legend">
           <span><span class="dot" style="background:var(--purple)"></span>&nbsp;Gana local</span>
@@ -88,6 +114,44 @@
       <section>
         <h2>Ranking de equipos</h2>
         <div class="card table-wrap"><table id="ratings"></table></div>
+      </section>
+    </div>
+
+    <!-- BUSCADOR DE CUOTAS -->
+    <div class="view" id="view-picks">
+      <section class="card">
+        <div class="controls">
+          <div class="control">
+            <span class="lbl">Día</span>
+            <select id="pk-date"></select>
+          </div>
+          <div class="control">
+            <span class="lbl">Acierto mínimo</span>
+            <div class="big" id="pk-prob-val">60%</div>
+            <input type="range" id="pk-prob" min="30" max="90" step="5" value="60" aria-label="Acierto mínimo" />
+            <div class="help">Probabilidad mínima que la IA tiene que dar al pronóstico.</div>
+          </div>
+          <div class="control">
+            <span class="lbl">Riesgo</span>
+            <div class="seg" id="pk-risk">
+              <button data-v="low" class="active">Bajo</button><button data-v="medium">Medio</button><button data-v="high">Alto</button>
+            </div>
+            <div class="help" id="pk-risk-help"></div>
+          </div>
+          <div class="control">
+            <span class="lbl">Combinar</span>
+            <div class="seg" id="pk-combine">
+              <button data-v="1" class="active">Simples</button><button data-v="2">Hasta 2</button><button data-v="3">Hasta 3</button>
+            </div>
+            <div class="help">Partidos distintos por pronóstico. Las probabilidades se multiplican.</div>
+            <label class="check" style="margin-top:12px"><input type="checkbox" id="pk-value" />Solo cuando la IA lo ve más probable que la casa</label>
+          </div>
+        </div>
+      </section>
+      <div class="banner" id="pk-history"></div>
+      <section>
+        <h2 id="pk-title">Mejores cuotas</h2>
+        <div class="picks" id="pk-list"></div>
       </section>
     </div>
 
@@ -107,16 +171,25 @@
         </div>
       </section>
       <section>
+        <h2>Acierto según la confianza de la IA</h2>
+        <div class="card table-wrap"><table id="confidence"></table></div>
+        <p class="note" style="margin-top:8px">Todas las selecciones analizadas (resultado, doble oportunidad, goles y ambos marcan).
+          La barra es el acierto real y la marca blanca es la probabilidad mínima que daba la IA: si la barra la supera, la IA fue prudente.</p>
+      </section>
+      <section>
         <h2>Últimos partidos analizados</h2>
         <div class="card table-wrap"><table id="recent"></table></div>
       </section>
     </div>
   </main>
 
-  <footer>Las predicciones son estimaciones estadísticas, no garantías. Datos de ejemplo de una liga ficticia.</footer>
+  <footer>Las predicciones son estimaciones estadísticas, no garantías. Datos y cuotas de ejemplo de una liga ficticia.
+    PHI.BET no acepta apuestas ni gestiona dinero; si apuestas en otro sitio, hazlo con responsabilidad y solo si eres mayor de edad.</footer>
 
   <script>
-    const pct = p => Math.round(p * 1000) / 10 + '%';
+    const num = (n, d = 1) => n.toLocaleString('es-ES', { maximumFractionDigits: d });
+    const pct = p => num(Math.round(p * 1000) / 10) + '%';
+    const fix = (n, d) => n.toFixed(d).replace('.', ',');
     const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const PICK = { home: 'Gana local', draw: 'Empate', away: 'Gana visitante' };
     const SIGN = { home: '1', draw: 'X', away: '2' };
@@ -130,6 +203,7 @@
       document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + name));
       try { localStorage.setItem('phibet-view', name); } catch {}
       if (name === 'performance' && perf) renderPerformance();
+      if (name === 'picks') loadPicks();
     }
     document.querySelectorAll('nav button').forEach(b => b.onclick = () => showView(b.dataset.view));
 
@@ -139,7 +213,7 @@
         const who = { home: p.home_team, draw: 'Empate', away: p.away_team }[p.pick];
         return `<div class="card">
           <div class="teams">${esc(p.home_team)} vs ${esc(p.away_team)}</div>
-          <div class="meta">${p.date} · Elo ${p.elo.home} – ${p.elo.away}</div>
+          <div class="meta">${p.date} · Elo ${num(p.elo.home)} – ${num(p.elo.away)}</div>
           <div class="pick">Pronóstico: ${esc(who)} · ${pct(p.confidence)}</div>
           <div class="bar"><div style="width:${pct(p.probs.home)}"></div><div style="width:${pct(p.probs.draw)}"></div><div style="width:${pct(p.probs.away)}"></div></div>
           <div class="probs">
@@ -148,7 +222,7 @@
             <span><span class="dot" style="background:var(--lilac)"></span>2 · ${pct(p.probs.away)}</span>
           </div>
           <div class="stats">
-            <div>Goles esperados<b>${p.expected_goals.home} – ${p.expected_goals.away}</b></div>
+            <div>Goles esperados<b>${num(p.expected_goals.home, 2)} – ${num(p.expected_goals.away, 2)}</b></div>
             <div>Marcador probable<b>${p.most_likely_score.join(' – ')}</b></div>
             <div>Más de 2,5 goles<b>${pct(p.over_2_5)}</b></div>
             <div>Marcan ambos<b>${pct(p.btts)}</b></div>
@@ -159,7 +233,7 @@
 
     get('/api/ratings').then(rs => {
       document.getElementById('ratings').innerHTML = '<tr><th>#</th><th>Equipo</th><th>Elo</th><th>Ataque</th><th>Defensa</th></tr>' +
-        rs.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.team)}</td><td class="num">${r.elo}</td><td class="num">${r.attack}</td><td class="num">${r.defense}</td></tr>`).join('');
+        rs.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.team)}</td><td class="num">${num(r.elo)}</td><td class="num">${fix(r.attack, 2)}</td><td class="num">${fix(r.defense, 2)}</td></tr>`).join('');
     });
 
     // --- Rendimiento --------------------------------------------------------
@@ -171,15 +245,23 @@
       const kpis = [
         ['Acierto de la IA', pct(p.accuracy), `referencia ${pct(p.baseline_accuracy)}`, true],
         ['Partidos evaluados', p.evaluated, 'predichos antes de jugarse'],
-        ['Brier score', p.brier.toFixed(3), `referencia ${p.baseline_brier.toFixed(3)} · menor es mejor`],
-        ['Log-loss', p.log_loss.toFixed(3), 'menor es mejor'],
-        ['Error en goles', p.goals_mae.toFixed(2), 'goles de media por equipo'],
+        ['Brier score', fix(p.brier, 3), `referencia ${fix(p.baseline_brier, 3)} · menor es mejor`],
+        ['Log-loss', fix(p.log_loss, 3), 'menor es mejor'],
+        ['Error en goles', fix(p.goals_mae, 2), 'goles de media por equipo'],
       ];
       document.getElementById('kpis').innerHTML = kpis.map(([l, v, sub, hero]) =>
         `<div class="kpi${hero ? ' hero' : ''}"><div class="label">${l}</div><div class="val">${v}</div><div class="sub">${sub}</div></div>`).join('');
       renderMonths(p.by_month, p.baseline_accuracy);
       renderCalibration(p.calibration);
       renderRecent(p.recent);
+      renderConfidence(p.by_confidence);
+    }
+
+    function renderConfidence(rows) {
+      document.getElementById('confidence').innerHTML = '<tr><th>La IA daba al menos</th><th>Casos</th><th>Acertó</th><th style="width:40%"></th></tr>' +
+        rows.filter(r => r.count).map(r => `<tr><td class="num">${pct(r.threshold)}</td><td class="num">${r.count}</td>
+          <td class="num"><b>${pct(r.hit_rate)}</b> ${r.hit_rate >= r.threshold ? '<span class="ok">✓</span>' : '<span class="ko">↓ por debajo</span>'}</td>
+          <td><div class="meter"><span style="width:${pct(r.hit_rate)}"></span><i style="left:${pct(r.threshold)}"></i></div></td></tr>`).join('');
     }
 
     const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
@@ -218,7 +300,7 @@
         g.onmousemove = () => {
           const r = rows[g.dataset.i], rect = el.querySelector('svg').getBoundingClientRect(), s = rect.width / f.W;
           tip(el, (f.P.l + band * (+g.dataset.i + 0.5)) * s + 14, y(r.accuracy) * s + 14,
-            `<b>${monthLabel(r.month)}</b><br>Acierto ${pct(r.accuracy)} · ${r.matches} partidos<br>Brier ${r.brier.toFixed(3)}`);
+            `<b>${monthLabel(r.month)}</b><br>Acierto ${pct(r.accuracy)} · ${r.matches} partidos<br>Brier ${fix(r.brier, 3)}`);
         };
         g.onmouseleave = () => hideTip(el);
       });
@@ -260,6 +342,65 @@
           <td>${SIGN[r.pick]} · ${PICK[r.pick]} <span class="muted">(${pct(r.probs[r.pick])})</span></td>
           <td class="num">${r.home_goals} – ${r.away_goals} <span class="muted">(${SIGN[r.actual]})</span></td>
           <td>${r.correct ? '<span class="ok">✓ Sí</span>' : '<span class="ko">✗ No</span>'}</td></tr>`).join('');
+    }
+
+    // --- Buscador de cuotas -------------------------------------------------
+    const RISK_HELP = {
+      low: 'Solo pronósticos en los que la IA y la casa de apuestas están casi de acuerdo (diferencia de 5 puntos como mucho). Cuotas más bajas.',
+      medium: 'Permite que la IA vea hasta 12 puntos más de probabilidad que la casa. Cuotas algo más altas.',
+      high: 'Sin límite: incluye pronósticos en los que la IA contradice a la casa. Cuotas más altas, pero si la IA se equivoca, fallan.',
+    };
+    const pk = { date: null, prob: 60, risk: 'low', combine: 1, value: false };
+    let pkDatesLoaded = false, pkTimer;
+    const fmtDay = d => new Date(d + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+    const odds2 = n => fix(n, 2);
+
+    function pkSeg(id, key, cast) {
+      document.querySelectorAll(`#${id} button`).forEach(b => b.onclick = () => {
+        document.querySelectorAll(`#${id} button`).forEach(x => x.classList.toggle('active', x === b));
+        pk[key] = cast(b.dataset.v); loadPicks();
+      });
+    }
+    pkSeg('pk-risk', 'risk', String); pkSeg('pk-combine', 'combine', Number);
+    document.getElementById('pk-prob').oninput = e => {
+      pk.prob = +e.target.value; document.getElementById('pk-prob-val').textContent = pk.prob + '%';
+      clearTimeout(pkTimer); pkTimer = setTimeout(loadPicks, 120);
+    };
+    document.getElementById('pk-date').onchange = e => { pk.date = e.target.value; loadPicks(); };
+    document.getElementById('pk-value').onchange = e => { pk.value = e.target.checked; loadPicks(); };
+
+    async function loadPicks() {
+      document.getElementById('pk-risk-help').textContent = RISK_HELP[pk.risk];
+      const q = new URLSearchParams({ min_prob: pk.prob / 100, risk: pk.risk, combine: pk.combine, value_only: pk.value, limit: 10 });
+      if (pk.date) q.set('date', pk.date);
+      const r = await get('/api/picks?' + q);
+      if (!pkDatesLoaded) {
+        document.getElementById('pk-date').innerHTML = r.dates.map(d => `<option value="${d}">${fmtDay(d)}</option>`).join('');
+        pk.date = r.date; pkDatesLoaded = true;
+      }
+      const h = r.historical;
+      document.getElementById('pk-history').innerHTML = h.count
+        ? `En el histórico, cuando la IA daba <b>${pk.prob}% o más</b>, acertó el <b>${pct(h.hit_rate)}</b> de las veces (${h.count} casos).` +
+          (pk.combine > 1 ? ' <span class="muted">Dato de selecciones simples; en una combinada tienen que acertar todas.</span>' : '')
+        : `No hay casos en el histórico con una probabilidad tan alta: tómalo con cautela.`;
+      document.getElementById('pk-title').textContent = `Mejores cuotas · ${fmtDay(r.date)}`;
+      const list = document.getElementById('pk-list');
+      if (!r.picks.length) {
+        list.innerHTML = '<div class="card empty">Ningún pronóstico cumple esas condiciones ese día. Prueba a bajar el acierto mínimo o subir el riesgo.</div>';
+        return;
+      }
+      list.innerHTML = r.picks.map((p, i) => {
+        const gap = p.prob - p.implied_prob;
+        const sels = p.selections.map(s => `<div class="sel">${esc(s.match)} · <b>${esc(s.market)}: ${esc(s.label)}</b>
+          ${p.size > 1 ? `<span class="meta muted">@ ${odds2(s.odds)} · IA ${pct(s.prob)}</span>` : ''}</div>`).join('');
+        return `<div class="pickcard">
+          <div class="rank">${i + 1}</div>
+          <div>${sels}
+            <span class="tag ${gap > 0.05 ? 'strong' : ''}">${p.size > 1 ? `Combinada de ${p.size} · ` : ''}IA ${pct(p.prob)} · casa ${pct(p.implied_prob)}${gap > 0.005 ? ` · la IA lo ve ${num(Math.round(gap * 1000) / 10)} pts más probable` : ''}</span>
+          </div>
+          <div class="odds"><span class="big">${odds2(p.odds)}</span><small>cuota</small></div>
+        </div>`;
+      }).join('');
     }
 
     let resizeTimer;

@@ -3,24 +3,144 @@
     "id": "f1",
     "date": "2026-09-26",
     "home_team": "Sporting Beta",
-    "away_team": "CD Lambda"
+    "away_team": "CD Lambda",
+    "odds": {
+      "1": 2.68,
+      "X": 3.17,
+      "2": 2.7,
+      "1X": 1.67,
+      "X2": 1.44,
+      "12": 1.21,
+      "over25": 2.1,
+      "under25": 1.71,
+      "btts_yes": 1.84,
+      "btts_no": 1.94
+    }
   },
   {
     "id": "f2",
     "date": "2026-09-26",
     "home_team": "Racing Gamma",
-    "away_team": "CF Epsilon"
+    "away_team": "CF Epsilon",
+    "odds": {
+      "1": 1.55,
+      "X": 4.49,
+      "2": 5.21,
+      "1X": 1.17,
+      "X2": 2.45,
+      "12": 1.17,
+      "over25": 1.81,
+      "under25": 1.97,
+      "btts_yes": 1.85,
+      "btts_no": 1.92
+    }
   },
   {
     "id": "f3",
     "date": "2026-09-26",
     "home_team": "Real Sigma",
-    "away_team": "Atlético Phi"
+    "away_team": "Atlético Phi",
+    "odds": {
+      "1": 2.3,
+      "X": 3.98,
+      "2": 2.67,
+      "1X": 1.41,
+      "X2": 1.57,
+      "12": 1.29,
+      "over25": 1.75,
+      "under25": 2.05,
+      "btts_yes": 1.58,
+      "btts_no": 2.34
+    }
   },
   {
     "id": "f4",
     "date": "2026-09-26",
     "home_team": "Unión Omega",
-    "away_team": "Deportivo Delta"
+    "away_team": "Deportivo Delta",
+    "odds": {
+      "1": 2.21,
+      "X": 3.7,
+      "2": 2.97,
+      "1X": 1.38,
+      "X2": 1.72,
+      "12": 1.23,
+      "over25": 1.7,
+      "under25": 2.13,
+      "btts_yes": 1.67,
+      "btts_no": 2.16
+    }
+  },
+  {
+    "id": "f5",
+    "date": "2026-10-03",
+    "home_team": "Racing Gamma",
+    "away_team": "CD Lambda",
+    "odds": {
+      "1": 2.22,
+      "X": 3.58,
+      "2": 3.03,
+      "1X": 1.39,
+      "X2": 1.67,
+      "12": 1.25,
+      "over25": 1.77,
+      "under25": 2.02,
+      "btts_yes": 1.76,
+      "btts_no": 2.04
+    }
+  },
+  {
+    "id": "f6",
+    "date": "2026-10-03",
+    "home_team": "CF Epsilon",
+    "away_team": "Unión Omega",
+    "odds": {
+      "1": 4.28,
+      "X": 3.69,
+      "2": 1.8,
+      "1X": 2.04,
+      "X2": 1.2,
+      "12": 1.25,
+      "over25": 1.82,
+      "under25": 1.96,
+      "btts_yes": 1.75,
+      "btts_no": 2.05
+    }
+  },
+  {
+    "id": "f7",
+    "date": "2026-10-03",
+    "home_team": "Atlético Phi",
+    "away_team": "Sporting Beta",
+    "odds": {
+      "1": 1.18,
+      "X": 6.96,
+      "2": 13.99,
+      "1X": 1.01,
+      "X2": 4.41,
+      "12": 1.13,
+      "over25": 1.41,
+      "under25": 2.84,
+      "btts_yes": 2.36,
+      "btts_no": 1.57
+    }
+  },
+  {
+    "id": "f8",
+    "date": "2026-10-03",
+    "home_team": "Real Sigma",
+    "away_team": "Deportivo Delta",
+    "odds": {
+      "1": 1.62,
+      "X": 4.3,
+      "2": 4.75,
+      "1X": 1.19,
+      "X2": 2.29,
+      "12": 1.18,
+      "over25": 1.54,
+      "under25": 2.44,
+      "btts_yes": 1.59,
+      "btts_no": 2.31
+    }
   }
 ]

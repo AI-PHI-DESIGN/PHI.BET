@@ -1,10 +1,10 @@
-"""Carga de datos: histórico de partidos y próximos partidos."""
+"""Carga de datos: histórico de partidos y próximos partidos con sus cuotas."""
 
 from __future__ import annotations
 
 import csv
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -25,6 +25,7 @@ class Fixture:
     date: str
     home_team: str
     away_team: str
+    odds: dict[str, float] = field(default_factory=dict)  # claves de app.markets.SELECTIONS
 
 
 def load_matches(path: Path = DATA_DIR / "matches.csv") -> list[Match]:

@@ -5,14 +5,17 @@ Registro de **cómo se hace** este proyecto, para repetirlo igual la próxima ve
 
 ## 0. Alcance del producto (decisión del usuario)
 
-PHI.BET es una **IA de análisis deportivo**. **No es una app para apostar**:
-nada de cuotas, casas de apuestas, apuestas de valor, stakes/Kelly, banca ni registro de apuestas.
-Si una idea nueva empuja hacia apostar, se pregunta antes de construirla.
+PHI.BET es una **IA de análisis deportivo**. **No es una app para apostar**: no acepta apuestas,
+no gestiona dinero y no hay banca, importes/stakes, Kelly ni registro de apuestas.
+**Sí muestra cuotas como información** en el Buscador de cuotas (petición expresa del usuario en
+la v0.4), siempre junto al acierto real de la IA. Si una idea nueva empuja hacia apostar o mover
+dinero, se pregunta antes de construirla.
 
 Historial: la v0.1 y la v0.2 incluían cuotas, apuestas de valor y una contabilidad de apuestas.
 En la v0.3 el usuario decidió que la app no fuera para apostar y se eliminó todo eso. La
 "contabilidad" se sustituyó por su equivalente en análisis: el **rendimiento de la IA** (cuánto
-acierta con partidos ya jugados).
+acierta con partidos ya jugados). En la v0.4 el usuario pidió un buscador de cuotas por acierto y
+riesgo: se añadió como información, sin volver a gestionar dinero.
 
 ## 1. Receta de arranque (proyecto de IA de análisis deportivo)
 
@@ -61,6 +64,34 @@ acierta con partidos ya jugados).
     referencia) y de API con `TestClient` (incluido que no existan endpoints de apuestas).
 11. **Docs**: README (qué hace, arrancar, estructura), este playbook y `CLAUDE.md`.
 
+## 1b. Análisis de acierto y buscador de cuotas (v0.4)
+
+1. **Mercados** (`app/markets.py`): 10 selecciones con clave estable: `1`, `X`, `2`, `1X`, `X2`,
+   `12`, `over25`, `under25`, `btts_yes`, `btts_no`, agrupadas (`1x2`, `dc`, `ou`, `btts`).
+   `model_probabilities()` sale del Poisson; `outcomes()` dice cuáles se cumplieron;
+   `implied_probabilities()` quita el margen de la casa **por grupo** (la doble oportunidad suma 200%).
+2. **Cuotas de ejemplo**: el generador calcula la probabilidad real de cada selección, le añade
+   ±10% de ruido, normaliza por grupo y aplica un 6% de margen. Dos jornadas futuras (sábados),
+   4 partidos cada una. El histórico no cambia (las cuotas se generan después con el mismo RNG).
+   `Fixture.odds` es opcional.
+3. **Análisis de acierto por confianza** (`evaluation.hit_rate_at`): en el walk-forward se guarda,
+   por partido, la probabilidad y el acierto de las 10 selecciones. Para cada umbral (50%…90%):
+   cuántas selecciones tenían al menos esa probabilidad y cuántas acertaron. Se muestra tal cual,
+   aunque la IA quede por debajo en los umbrales altos.
+4. **Buscador** (`app/picks.py`, `GET /api/picks`):
+   - `min_prob` (acierto mínimo): probabilidad de la IA ≥ umbral (la de la combinada entera, si lo es).
+   - `risk` = **cuánto se confía en la IA cuando discrepa de la casa**: máxima diferencia
+     prob. IA − prob. casa por selección: bajo 5 pts, medio 12 pts, alto sin límite.
+     *(Se probó antes "riesgo = nº de selecciones combinadas" y no funciona: a igual probabilidad,
+     combinar acumula el margen y casi nunca mejora la cuota.)*
+   - `combine` 1–3: combinadas de partidos distintos (probabilidades y cuotas se multiplican).
+   - `value_only`: solo si prob. IA × cuota > 1. `date`: día (por defecto el primero con cuotas).
+   - Orden: cuota descendente. La respuesta incluye `historical` = `hit_rate_at(min_prob)`.
+5. **Web**: pestaña *Buscador de cuotas* (día, deslizador de acierto 30–90%, riesgo y combinar
+   como botones con texto de ayuda, casilla de valor), aviso con el acierto histórico y lista
+   con cuota, selecciones y "IA x% · casa y%". En *Rendimiento*, tabla "Acierto según la
+   confianza de la IA" con barra (acierto real) y marca (umbral).
+
 ## 2. Verificación antes de cada commit
 
 ```bash
@@ -94,16 +125,24 @@ Hay que comprobar:
 Trucos CSS: los hijos de grid llevan `min-width:0`, las columnas usan
 `minmax(min(100%,320px),1fr)`, y los grupos de botones llevan `flex-wrap:wrap`.
 
-Para parar el servidor: `kill <pid>`. No usar `pkill -f` con un patrón que también case con la
-propia shell, porque la mata.
+Para arrancar y parar el servidor, usar un script en el scratchpad que guarde el PID
+(`server.sh start|stop`: `nohup uvicorn … & echo $! > uv.pid` / `kill $(cat uv.pid)`).
+**No** buscar el proceso con `pkill -f` ni `ps | grep` con el comando en la misma línea: el
+patrón coincide con la propia shell y la mata. Si una captura falla con 404 en un endpoint nuevo,
+probablemente siga vivo un servidor antiguo en el puerto.
+
+En el navegador, probar también las interacciones: en el buscador, que subir el riesgo o bajar el
+acierto suba la mejor cuota, que las combinadas aparezcan y que cambiar de día cambie el título.
 
 ## 3. Convenciones
 
 - Idioma: nombres de código en inglés; comentarios, docs, mensajes de error y UI en español.
 - Sin dependencias pesadas mientras no hagan falta (modelos en Python puro).
-- Probabilidades como fracción 0–1 en la API; la web las formatea a %.
+- Probabilidades como fracción 0–1 en la API; la web las formatea a % con **coma decimal**
+  (`num()`, `pct()`, `fix()`; nunca `toFixed` a secas en la UI).
 - Commits pequeños y descriptivos, en español.
-- Pie de página: "Las predicciones son estimaciones estadísticas, no garantías".
+- Pie de página: "Las predicciones son estimaciones estadísticas, no garantías" + que PHI.BET no
+  acepta apuestas ni gestiona dinero y juego responsable (+18) porque se muestran cuotas.
 - **Identidad visual: morado y negro.** Fondo `#07050b`, tarjetas `#110c1a`, bordes `#2a2040`,
   texto `#f1edf9` / `#9a91ad`, morado principal `#8b5cf6` (claro `#a78bfa`, profundo `#5b21b6`).
   Barra 1/X/2: local `#8b5cf6`, empate `#4b4460`, visitante `#d4c6ff`, siempre con leyenda y % en texto.
@@ -118,9 +157,11 @@ propia shell, porque la mata.
 - [x] **v0.2**: tema morado y negro (tenía contabilidad de apuestas; eliminada en v0.3).
 - [x] **v0.3 — Solo análisis**: fuera todo lo de apostar; nueva sección de rendimiento de la IA
       (walk-forward, acierto, Brier, log-loss, calibración, referencia).
-- [ ] **v0.4 — Datos reales**: conectar un proveedor de resultados y calendario (p. ej.
-      football-data.org, API-Football); clave en `.env`; caché local.
-- [ ] **v0.5 — Mejor modelo**: ponderación temporal (lo reciente pesa más), Dixon-Coles,
+- [x] **v0.4 — Acierto y buscador**: acierto según la confianza de la IA; buscador de cuotas por
+      día, acierto mínimo, riesgo y combinadas (cuotas solo informativas).
+- [ ] **v0.5 — Datos reales**: proveedor de resultados y calendario (football-data.org,
+      API-Football) y de cuotas (The Odds API); claves en `.env`; caché local.
+- [ ] **v0.6 — Mejor modelo** (sobre todo la calibración por encima del 80%): ponderación temporal (lo reciente pesa más), Dixon-Coles,
       después gradient boosting con forma, lesiones y descanso; comparar siempre con la evaluación.
-- [ ] **v0.6 — App**: más ligas y deportes, ficha de equipo, comparador de equipos, asistente
+- [ ] **v0.7 — App**: más ligas y deportes, ficha de equipo, comparador de equipos, asistente
       con Claude que explique cada pronóstico en lenguaje natural.

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import asdict
 
-from app import evaluation
+from app import evaluation, markets, picks
 from app.data import Fixture, Match, load_fixtures, load_matches
 from app.models.elo import EloModel
 from app.models.poisson import PoissonModel
@@ -37,6 +37,7 @@ class PredictionEngine:
             "most_likely_score": list(p.most_likely_score),
             "over_2_5": round(p.over_2_5, 4),
             "btts": round(p.btts, 4),
+            "markets": {k: round(v, 4) for k, v in markets.model_probabilities(p).items()},
             "elo": {
                 "home": round(self.elo.rating(fixture.home_team), 1),
                 "away": round(self.elo.rating(fixture.away_team), 1),
@@ -45,6 +46,29 @@ class PredictionEngine:
 
     def predictions(self) -> list[dict]:
         return [self.predict(f) for f in self.fixtures.values()]
+
+    def dates(self) -> list[str]:
+        return sorted({f.date for f in self.fixtures.values() if f.odds})
+
+    def picks(
+        self, date: str | None, min_prob: float, risk: str, combine: int = 1, value_only: bool = False, limit: int = 10
+    ) -> dict:
+        dates = self.dates()
+        date = date or (dates[0] if dates else None)
+        day = [self.predict(f) for f in self.fixtures.values() if f.date == date]
+        candidates = picks.candidate_selections(day, self.fixtures)
+        return {
+            "dates": dates,
+            "date": date,
+            "min_prob": min_prob,
+            "risk": risk,
+            "max_gap": picks.RISK_LEVELS[risk],
+            "combine": combine,
+            "candidates": len(candidates),
+            # Cómo le fue a la IA en el histórico con selecciones de al menos esta probabilidad.
+            "historical": evaluation.hit_rate_at(self._evaluated, min_prob),
+            "picks": picks.best_picks(candidates, min_prob, risk, combine, value_only, limit),
+        }
 
     def performance(self, recent: int = 20) -> dict:
         recent_rows = self._evaluated[max(0, len(self._evaluated) - recent) :] if recent else []
