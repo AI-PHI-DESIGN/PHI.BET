@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PHI.BET</title>
+  <style>
+    :root { --bg:#0e1116; --card:#171b22; --line:#262c36; --text:#e6e9ef; --muted:#8a93a3; --accent:#3ddc97; --warn:#f5b041; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--text); }
+    header { padding:20px 16px; border-bottom:1px solid var(--line); display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; }
+    header h1 { margin:0; font-size:22px; letter-spacing:1px; }
+    header h1 span { color:var(--accent); }
+    header p { margin:0; color:var(--muted); font-size:14px; }
+    main { max-width:1000px; margin:0 auto; padding:16px; display:grid; gap:24px; }
+    h2 { font-size:16px; margin:0 0 10px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; }
+    .grid { display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); }
+    .teams { font-weight:600; margin-bottom:4px; }
+    .meta { color:var(--muted); font-size:13px; margin-bottom:10px; }
+    .bar { display:flex; height:8px; border-radius:4px; overflow:hidden; margin:8px 0; }
+    .bar div:nth-child(1){ background:#4c8bf5; } .bar div:nth-child(2){ background:#7a8394; } .bar div:nth-child(3){ background:#e0645c; }
+    .table-wrap { overflow-x:auto; }
+    table { width:100%; border-collapse:collapse; font-size:14px; }
+    th, td { text-align:left; padding:8px 6px; border-bottom:1px solid var(--line); white-space:nowrap; }
+    th { color:var(--muted); font-weight:500; }
+    .value { color:var(--accent); font-weight:600; }
+    .num { font-variant-numeric:tabular-nums; }
+    footer { max-width:1000px; margin:0 auto; padding:16px; color:var(--warn); font-size:13px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>PHI<span>.</span>BET</h1>
+    <p>IA de análisis de apuestas deportivas · modelo Poisson + Elo</p>
+  </header>
+  <main>
+    <section>
+      <h2>Apuestas de valor</h2>
+      <div class="card table-wrap"><table id="value-bets"></table></div>
+    </section>
+    <section>
+      <h2>Próximos partidos</h2>
+      <div class="grid" id="predictions"></div>
+    </section>
+    <section>
+      <h2>Ranking de equipos</h2>
+      <div class="card table-wrap"><table id="ratings"></table></div>
+    </section>
+  </main>
+  <footer>
+    Las predicciones son estimaciones estadísticas, no garantías. Juega con responsabilidad y solo si eres mayor de edad.
+  </footer>
+  <script>
+    const pct = p => (p * 100).toFixed(1) + '%';
+    const LABEL = { home: '1 (local)', draw: 'X (empate)', away: '2 (visitante)' };
+    const get = url => fetch(url).then(r => r.json());
+
+    get('/api/value-bets').then(bets => {
+      const t = document.getElementById('value-bets');
+      if (!bets.length) { t.innerHTML = '<tr><td>No hay apuestas de valor en esta jornada.</td></tr>'; return; }
+      t.innerHTML = '<tr><th>Partido</th><th>Apuesta</th><th>Cuota</th><th>Prob. IA</th><th>Prob. mercado</th><th>Valor esp.</th><th>Stake (Kelly)</th></tr>' +
+        bets.map(b => `<tr><td>${b.match}</td><td>${LABEL[b.outcome]}</td><td class="num">${b.odds.toFixed(2)}</td>
+          <td class="num">${pct(b.model_prob)}</td><td class="num">${pct(b.market_prob)}</td>
+          <td class="num value">+${pct(b.expected_value)}</td><td class="num">${pct(b.kelly_stake)} bank</td></tr>`).join('');
+    });
+
+    get('/api/predictions').then(preds => {
+      document.getElementById('predictions').innerHTML = preds.map(p => {
+        const m = Object.fromEntries(p.markets.map(x => [x.outcome, x]));
+        return `<div class="card">
+          <div class="teams">${p.home_team} vs ${p.away_team}</div>
+          <div class="meta">${p.date} · xG ${p.expected_goals.home} – ${p.expected_goals.away} · marcador probable ${p.most_likely_score.join('-')}</div>
+          <div class="bar"><div style="width:${pct(m.home.model_prob)}"></div><div style="width:${pct(m.draw.model_prob)}"></div><div style="width:${pct(m.away.model_prob)}"></div></div>
+          <table>
+            <tr><th></th><th>1</th><th>X</th><th>2</th></tr>
+            <tr><td>IA</td>${['home','draw','away'].map(k => `<td class="num ${m[k].is_value ? 'value' : ''}">${pct(m[k].model_prob)}</td>`).join('')}</tr>
+            <tr><td>Cuota</td>${['home','draw','away'].map(k => `<td class="num">${m[k].odds.toFixed(2)}</td>`).join('')}</tr>
+          </table>
+          <div class="meta" style="margin:10px 0 0">+2.5 goles ${pct(p.over_2_5)} · Ambos marcan ${pct(p.btts)} · Margen casa ${pct(p.bookmaker_margin)}</div>
+        </div>`;
+      }).join('');
+    });
+
+    get('/api/ratings').then(rs => {
+      document.getElementById('ratings').innerHTML = '<tr><th>#</th><th>Equipo</th><th>Elo</th><th>Ataque</th><th>Defensa</th></tr>' +
+        rs.map((r, i) => `<tr><td>${i + 1}</td><td>${r.team}</td><td class="num">${r.elo}</td><td class="num">${r.attack}</td><td class="num">${r.defense}</td></tr>`).join('');
+    });
+  </script>
+</body>
+</html>
