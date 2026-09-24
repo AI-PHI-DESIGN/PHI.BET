@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import math
 from collections import defaultdict
+from typing import Callable
 
 from app import markets
 from app.data import Match
@@ -32,7 +33,9 @@ def brier(probs: dict[str, float], actual: str) -> float:
     return sum((probs[o] - (1.0 if o == actual else 0.0)) ** 2 for o in OUTCOMES)
 
 
-def walk_forward(matches: list[Match], min_training: int = MIN_TRAINING) -> list[dict]:
+def walk_forward(
+    matches: list[Match], min_training: int = MIN_TRAINING, make_model: Callable[[], PoissonModel] = PoissonModel
+) -> list[dict]:
     ordered = sorted(matches, key=lambda m: m.date)
     rows, model, trained_until = [], None, None
     for i, m in enumerate(ordered):
@@ -40,7 +43,7 @@ def walk_forward(matches: list[Match], min_training: int = MIN_TRAINING) -> list
             continue
         past = [p for p in ordered[:i] if p.date < m.date]
         if model is None or trained_until != len(past):  # reentrena una vez por jornada
-            model, trained_until = PoissonModel().fit(past), len(past)
+            model, trained_until = make_model().fit(past), len(past)
         p = model.predict(m.home_team, m.away_team)
         probs = {"home": p.home, "draw": p.draw, "away": p.away}
         pick = max(probs, key=probs.get)
