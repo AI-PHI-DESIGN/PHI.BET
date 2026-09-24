@@ -37,6 +37,37 @@ Orden seguido en la v0.1, de menos a más:
     y de API con `TestClient`.
 11. **Docs**: README (qué hace, arrancar, estructura), este playbook y `CLAUDE.md`.
 
+## 1b. Contabilidad y P&L (v0.2)
+
+Receta para añadir el apartado contable:
+
+1. **Persistencia**: SQLite de la librería estándar (`app/ledger.py`, clase `Ledger`), una sola
+   conexión con `check_same_thread=False` + `threading.Lock`. Ruta desde `PHIBET_DB`
+   (por defecto `backend/data/phibet.db`, ignorado en git). Tablas `transactions`
+   (deposit/withdrawal) y `bets` (pending/won/lost/void, `profit` al liquidar).
+2. **Reglas contables** (probadas en `tests/test_ledger.py`):
+   - Banca = depósitos − retiradas + Σ beneficio de apuestas liquidadas.
+   - En juego (exposición) = Σ importes pendientes. Disponible = banca − en juego.
+   - Beneficio: ganada `stake·(cuota−1)`, perdida `−stake`, nula `0`.
+   - Yield = beneficio / apostado; las **nulas no cuentan** como apostado ni en el % de acierto.
+   - Máxima caída = mayor bajada desde un pico de la curva de beneficio acumulado.
+   - Se rechaza (HTTP 400) apostar o retirar más que lo disponible, liquidar dos veces
+     y borrar apuestas ya liquidadas.
+3. **API** `/api/accounting/*`: `summary`, `transactions` (GET/POST), `bets` (GET con
+   `?status=`, POST, `DELETE /{id}`, `POST /{id}/settle`), `pnl?group=month|day|market`,
+   `equity`, `export.csv`. Entradas validadas con Pydantic; `LedgerError` → 400, id
+   inexistente → 404.
+4. **Tests de API**: `conftest.py` fija `PHIBET_DB` a un fichero temporal **antes** de importar
+   la app, para no tocar nunca la base real.
+5. **Web**: pestañas Análisis/Contabilidad (la elegida se recuerda en `localStorage` con
+   try/catch). Contabilidad: KPIs, curva de beneficio (línea + cursor con tooltip), barras de
+   P&L sobre la línea de cero (tooltip + tabla de detalle), formularios de apuesta y movimiento,
+   tabla de apuestas con Ganada/Perdida/Nula/✕ y filtro por estado, exportar CSV.
+   El botón **Registrar** de una apuesta de valor rellena el formulario con el stake de Kelly
+   sobre el disponible.
+6. **Datos de demo para capturas**: arrancar con `PHIBET_DB` en el scratchpad y rellenar
+   por la API (depósito + ~30 apuestas liquidadas en varios meses + 2 pendientes + una retirada).
+
 ## 2. Verificación antes de cada commit
 
 ```bash
@@ -56,6 +87,10 @@ const { chromium } = require('playwright');
   await p.screenshot({ path: process.argv[2], fullPage: true }); await b.close(); })();
 ```
 
+Comprobar también que no hay scroll horizontal (`document.documentElement.scrollWidth -
+innerWidth` debe ser 0) a 1200 px y a 390 px (móvil), y que la consola no tiene errores.
+Truco CSS: los hijos de grid llevan `min-width:0` y las columnas usan `minmax(min(100%,320px),1fr)`.
+
 Para parar el servidor usar `kill <pid>` (no `pkill -f` con un patrón que también case con la
 propia shell).
 
@@ -66,16 +101,24 @@ propia shell).
 - Probabilidades como fracción 0–1 en la API; la web las formatea a %.
 - Commits pequeños y descriptivos, en español.
 - Siempre aviso de juego responsable en la UI.
+- **Identidad visual: morado y negro.** Fondo `#07050b`, tarjetas `#110c1a`, bordes `#2a2040`,
+  texto `#f1edf9` / `#9a91ad`, morado principal `#8b5cf6` (claro `#a78bfa`, profundo `#5b21b6`).
+- Gráficos: seguir la skill `dataviz`. Ganancia `#8b5cf6` y pérdida `#d95926` (validados con
+  `validate_palette.js --mode dark`); el signo también se codifica por la posición respecto a la
+  línea de cero, y hay tooltip y tabla. Textos con colores de texto, no con el de la serie.
+- Escapar siempre con `esc()` el texto que viene del usuario antes de meterlo en `innerHTML`.
 
 ## Hoja de ruta
 
 - [x] **v0.1** — Poisson + Elo, detector de valor, Kelly, API, panel web, datos sintéticos.
-- [ ] **v0.2 — Datos reales**: conectar un proveedor de resultados y cuotas (p. ej. football-data,
+- [x] **v0.2 — Contabilidad y P&L**: banca, registro/liquidación de apuestas, KPIs, P&L por
+      periodo y mercado, curva de beneficio, CSV. Tema morado y negro.
+- [ ] **v0.3 — Datos reales**: conectar un proveedor de resultados y cuotas (p. ej. football-data,
       API-Football, The Odds API); clave en `.env`; caché local.
-- [ ] **v0.3 — Validación**: backtesting por temporadas (ROI, yield, log-loss, Brier, calibración)
+- [ ] **v0.4 — Validación**: backtesting por temporadas (ROI, yield, log-loss, Brier, calibración)
       y ponderación temporal (partidos recientes pesan más, Dixon-Coles).
-- [ ] **v0.4 — Modelo ML**: gradient boosting con features (Elo, xG, forma, lesiones, descanso)
+- [ ] **v0.5 — Modelo ML**: gradient boosting con features (Elo, xG, forma, lesiones, descanso)
       y ensemble con Poisson.
-- [ ] **v0.5 — App**: usuarios, bankroll y registro de apuestas, más mercados (hándicap, over/under
+- [ ] **v0.6 — App**: usuarios (contabilidad por usuario), CLV (cuota de cierre), más mercados (hándicap, over/under
       con cuotas), más deportes, asistente conversacional con Claude que explique cada pick.
 - [ ] **Producto**: app móvil, notificaciones, cumplimiento legal y límites de juego responsable.
