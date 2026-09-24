@@ -14,6 +14,8 @@ from dataclasses import dataclass
 from app.data import Match
 
 MAX_GOALS = 10
+MIN_AVG_GOALS = 0.1
+MIN_STRENGTH = 0.05  # evita λ = 0 (probabilidad cero de marcar) con pocos datos
 
 
 @dataclass
@@ -49,8 +51,9 @@ class PoissonModel:
             raise ValueError("Se necesita al menos un partido para entrenar el modelo")
 
         n = len(matches)
-        self.avg_home_goals = sum(m.home_goals for m in matches) / n
-        self.avg_away_goals = sum(m.away_goals for m in matches) / n
+        # Suelo mínimo para no dividir entre cero con muestras sin goles (p. ej. ningún gol visitante).
+        self.avg_home_goals = max(sum(m.home_goals for m in matches) / n, MIN_AVG_GOALS)
+        self.avg_away_goals = max(sum(m.away_goals for m in matches) / n, MIN_AVG_GOALS)
 
         stats: dict[str, dict[str, float]] = {}
         for m in matches:
@@ -73,8 +76,8 @@ class PoissonModel:
                 attack_parts.append(s["as"] / s["an"] / self.avg_away_goals)
                 defense_parts.append(s["ac"] / s["an"] / self.avg_home_goals)
             self.strengths[team] = TeamStrength(
-                attack=sum(attack_parts) / len(attack_parts),
-                defense=sum(defense_parts) / len(defense_parts),
+                attack=max(sum(attack_parts) / len(attack_parts), MIN_STRENGTH),
+                defense=max(sum(defense_parts) / len(defense_parts), MIN_STRENGTH),
             )
         return self
 

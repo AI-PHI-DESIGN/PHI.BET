@@ -1,4 +1,4 @@
-"""Genera una liga sintética de ejemplo (histórico + próximos partidos con cuotas).
+"""Genera una liga sintética de ejemplo (histórico de partidos + próxima jornada).
 
 Uso: python scripts/generate_sample_data.py   (desde backend/)
 Es determinista (semilla fija). Sustituir por datos reales cuando haya proveedor.
@@ -7,7 +7,6 @@ Es determinista (semilla fija). Sustituir por datos reales cuando haya proveedor
 from __future__ import annotations
 
 import csv
-import itertools
 import json
 import math
 import random
@@ -15,6 +14,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 SEED = 42
+SEASONS = 3
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
 # (equipo, ataque, defensa) — fuerzas "reales" ocultas que el modelo debe descubrir.
@@ -40,58 +40,44 @@ def poisson(rng: random.Random, lam: float) -> int:
         k += 1
 
 
+def round_robin(names: list[str]) -> list[list[tuple[str, str]]]:
+    """Calendario de ida y vuelta por el método del círculo: una lista de partidos por jornada."""
+    teams = names[:]
+    rounds = []
+    for r in range(len(teams) - 1):
+        pairs = [(teams[i], teams[-1 - i]) for i in range(len(teams) // 2)]
+        rounds.append([(a, b) if r % 2 == 0 else (b, a) for a, b in pairs])
+        teams = [teams[0], teams[-1], *teams[1:-1]]
+    return rounds + [[(b, a) for a, b in rnd] for rnd in rounds]
+
+
 def main() -> None:
     rng = random.Random(SEED)
     strength = {t: (a, d) for t, a, d in TEAMS}
     names = [t for t, _, _ in TEAMS]
 
-    # Dos temporadas de ida y vuelta.
-    rows, day = [], date(2025, 8, 16)
-    for _ in range(2):
-        for home, away in itertools.permutations(names, 2):
-            lam_h = strength[home][0] * strength[away][1] * HOME_GOALS
-            lam_a = strength[away][0] * strength[home][1] * AWAY_GOALS
-            rows.append([day.isoformat(), home, away, poisson(rng, lam_h), poisson(rng, lam_a)])
-            day += timedelta(days=1)
+    # Una jornada por semana, temporadas consecutivas.
+    rows, day = [], date(2025, 12, 6)
+    for _ in range(SEASONS):
+        for matchday in round_robin(names):
+            for home, away in matchday:
+                lam_h = strength[home][0] * strength[away][1] * HOME_GOALS
+                lam_a = strength[away][0] * strength[home][1] * AWAY_GOALS
+                rows.append([day.isoformat(), home, away, poisson(rng, lam_h), poisson(rng, lam_a)])
+            day += timedelta(days=7)
 
     with (DATA_DIR / "matches.csv").open("w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(["date", "home_team", "away_team", "home_goals", "away_goals"])
         w.writerows(rows)
 
-    # Próxima jornada: cuotas con margen del 6% y algo de ruido del "mercado".
+    # Próxima jornada (sin resultado).
     shuffled = names[:]
     rng.shuffle(shuffled)
-    fixtures, kickoff = [], date(2026, 10, 3)
-    for i in range(0, len(shuffled), 2):
-        home, away = shuffled[i], shuffled[i + 1]
-        lam_h = strength[home][0] * strength[away][1] * HOME_GOALS
-        lam_a = strength[away][0] * strength[home][1] * AWAY_GOALS
-        ph = pd = pa = 0.0
-        for x in range(11):
-            for y in range(11):
-                p = (math.exp(-lam_h) * lam_h**x / math.factorial(x)) * (
-                    math.exp(-lam_a) * lam_a**y / math.factorial(y)
-                )
-                if x > y:
-                    ph += p
-                elif x == y:
-                    pd += p
-                else:
-                    pa += p
-        noisy = [max(0.05, p * rng.uniform(0.85, 1.15)) for p in (ph, pd, pa)]
-        total = sum(noisy)
-        odds = [round(1 / (p / total * 1.06), 2) for p in noisy]
-        fixtures.append(
-            {
-                "id": f"f{i // 2 + 1}",
-                "date": kickoff.isoformat(),
-                "home_team": home,
-                "away_team": away,
-                "odds": {"home": odds[0], "draw": odds[1], "away": odds[2]},
-            }
-        )
-
+    fixtures = [
+        {"id": f"f{i // 2 + 1}", "date": day.isoformat(), "home_team": shuffled[i], "away_team": shuffled[i + 1]}
+        for i in range(0, len(shuffled), 2)
+    ]
     with (DATA_DIR / "fixtures.json").open("w", encoding="utf-8") as f:
         json.dump(fixtures, f, ensure_ascii=False, indent=2)
 

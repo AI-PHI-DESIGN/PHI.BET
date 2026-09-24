@@ -1,46 +1,26 @@
 [
   {
     "id": "f1",
-    "date": "2026-10-03",
-    "home_team": "Racing Gamma",
-    "away_team": "Real Sigma",
-    "odds": {
-      "home": 4.47,
-      "draw": 3.98,
-      "away": 1.71
-    }
+    "date": "2026-09-26",
+    "home_team": "Sporting Beta",
+    "away_team": "CD Lambda"
   },
   {
     "id": "f2",
-    "date": "2026-10-03",
-    "home_team": "CF Epsilon",
-    "away_team": "Sporting Beta",
-    "odds": {
-      "home": 2.59,
-      "draw": 3.77,
-      "away": 2.45
-    }
+    "date": "2026-09-26",
+    "home_team": "Racing Gamma",
+    "away_team": "CF Epsilon"
   },
   {
     "id": "f3",
-    "date": "2026-10-03",
-    "home_team": "Unión Omega",
-    "away_team": "CD Lambda",
-    "odds": {
-      "home": 1.74,
-      "draw": 4.16,
-      "away": 4.07
-    }
+    "date": "2026-09-26",
+    "home_team": "Real Sigma",
+    "away_team": "Atlético Phi"
   },
   {
     "id": "f4",
-    "date": "2026-10-03",
-    "home_team": "Deportivo Delta",
-    "away_team": "Atlético Phi",
-    "odds": {
-      "home": 3.21,
-      "draw": 3.76,
-      "away": 2.08
-    }
+    "date": "2026-09-26",
+    "home_team": "Unión Omega",
+    "away_team": "Deportivo Delta"
   }
 ]

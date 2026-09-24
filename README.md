@@ -1,21 +1,20 @@
 # PHI.BET
 
-IA de análisis para apuestas deportivas. Estima la probabilidad real de cada resultado,
-la compara con las cuotas de la casa y detecta **apuestas de valor** (cuando la cuota paga
-más de lo que debería según el modelo), con un stake recomendado por Kelly fraccional.
+IA de **análisis deportivo**. Predice el resultado de los próximos partidos (probabilidades de
+1/X/2, goles esperados, marcador más probable…) y mide con honestidad cuánto acierta con los
+partidos ya jugados. **No es una app para apostar**: no hay cuotas, apuestas ni dinero.
 
-## Qué hace (v0.2)
+## Qué hace (v0.3)
 
 | Pieza | Descripción |
 |---|---|
-| Modelo Poisson | Fuerza de ataque/defensa por equipo → goles esperados (xG), 1X2, +2.5 goles, ambos marcan, marcador más probable |
+| Modelo Poisson | Fuerza de ataque/defensa por equipo → goles esperados, 1X2, más de 2,5 goles, marcan ambos, marcador más probable |
 | Modelo Elo | Ranking dinámico de equipos, actualizado partido a partido |
-| Motor de valor | Quita el margen de la casa, calcula valor esperado (EV) y stake Kelly (¼ Kelly, tope 5% del bank) |
-| Contabilidad y P&L | Banca (depósitos/retiradas), registro y liquidación de apuestas, beneficio neto, yield, % acierto, máxima caída, P&L por mes/día/mercado, curva de beneficio y exportación CSV. SQLite |
-| API REST | FastAPI: análisis en `/api/predictions`, `/api/value-bets`, `/api/ratings`; contabilidad en `/api/accounting/*` (documentación interactiva en `/docs`) |
-| Web | Panel morado y negro con dos pestañas, **Análisis** y **Contabilidad**, servido por la propia API |
+| Rendimiento de la IA | Cada partido jugado se predice solo con los anteriores (walk-forward): % de acierto, Brier, log-loss, error en goles, calibración y comparación con una referencia |
+| API REST | FastAPI: `/api/predictions`, `/api/predictions/{id}`, `/api/performance`, `/api/ratings`, `/api/health` (documentación interactiva en `/docs`) |
+| Web | Panel morado y negro con dos pestañas: **Predicciones** y **Rendimiento de la IA** |
 
-Los datos de partidos son **sintéticos** (liga ficticia de 8 equipos generada con semilla fija).
+Los datos son **sintéticos** (liga ficticia de 8 equipos, 3 temporadas, generada con semilla fija).
 
 ## Arrancar
 
@@ -26,9 +25,6 @@ cd backend
 ../.venv/bin/uvicorn app.main:app --reload
 # Abrir http://localhost:8000  ·  documentación de la API en /docs
 ```
-
-La contabilidad se guarda en `backend/data/phibet.db` (no se sube a git). Para usar otra
-ruta: `PHIBET_DB=/ruta/mi.db`.
 
 Tests:
 
@@ -48,14 +44,13 @@ cd backend && ../.venv/bin/python scripts/generate_sample_data.py
 backend/
   app/
     main.py          API FastAPI + sirve la web
-    service.py       PredictionEngine: entrena modelos y cruza con cuotas
-    betting.py       Probabilidad implícita, margen, EV, Kelly
-    ledger.py        Contabilidad: banca, apuestas, P&L (SQLite)
-    data.py          Carga de partidos (CSV) y próximos partidos con cuotas (JSON)
+    service.py       PredictionEngine: entrena modelos y genera el análisis
+    evaluation.py    Rendimiento de la IA (walk-forward, métricas, calibración)
+    data.py          Carga de partidos (CSV) y próximos partidos (JSON)
     models/
       poisson.py     Modelo de goles
       elo.py         Ratings Elo
-  data/              matches.csv, fixtures.json (y phibet.db local)
+  data/              matches.csv, fixtures.json
   scripts/           generate_sample_data.py
   tests/             pytest
 web/index.html       Panel
@@ -68,5 +63,4 @@ Ver [docs/PLAYBOOK.md](docs/PLAYBOOK.md#hoja-de-ruta).
 
 ## Aviso
 
-Las predicciones son estimaciones estadísticas, no garantías. Proyecto con fines de análisis;
-juega con responsabilidad, solo si eres mayor de edad y donde sea legal.
+Las predicciones son estimaciones estadísticas, no garantías.

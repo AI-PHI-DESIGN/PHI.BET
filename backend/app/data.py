@@ -1,4 +1,4 @@
-"""Carga de datos: histórico de partidos y próximos partidos con cuotas."""
+"""Carga de datos: histórico de partidos y próximos partidos."""
 
 from __future__ import annotations
 
@@ -25,7 +25,6 @@ class Fixture:
     date: str
     home_team: str
     away_team: str
-    odds: dict[str, float]  # claves: home, draw, away
 
 
 def load_matches(path: Path = DATA_DIR / "matches.csv") -> list[Match]:

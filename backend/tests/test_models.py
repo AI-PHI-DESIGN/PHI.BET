@@ -34,3 +34,10 @@ def test_elo_ranks_teams():
     elo = EloModel().fit(MATCHES)
     assert elo.rating("Fuerte") > elo.rating("Medio") > elo.rating("Debil")
     assert sum(elo.ratings.values()) == pytest.approx(1500 * 3)
+
+
+def test_poisson_handles_no_away_goals():
+    only_home = [Match(f"2025-01-0{d}", "A", "B", 2, 0) for d in range(1, 4)]
+    p = PoissonModel().fit(only_home).predict("A", "B")
+    assert p.home + p.draw + p.away == pytest.approx(1.0)
+    assert p.away > 0
