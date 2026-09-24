@@ -43,6 +43,8 @@ class PredictionEngine:
             "confidence": probs[pick],
             "expected_goals": {"home": round(p.home_xg, 2), "away": round(p.away_xg, 2)},
             "most_likely_score": list(p.most_likely_score),
+            "pick_score": {"score": list(p.pick_score), "prob": round(p.pick_score_prob, 4)},
+            "top_scores": [{"score": [i, j], "prob": round(q, 4)} for i, j, q in p.top_scores],
             "over_2_5": round(p.over_2_5, 4),
             "btts": round(p.btts, 4),
             "markets": {k: round(v, 4) for k, v in markets.model_probabilities(p).items()},

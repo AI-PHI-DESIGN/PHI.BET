@@ -168,6 +168,10 @@ Decisión del usuario: **sin gastar dinero**. Se eligió Render gratis + un "des
 4. `evaluation.walk_forward(..., make_model=...)` acepta cualquier configuración del modelo.
 5. Solo se cambian los valores por defecto si mejoran Brier **y** calibración con datos
    reales; los datos de ejemplo (fuerzas fijas) no sirven para decidir esto.
+6. **Marcador en la tarjeta**: el exacto más probable sale 1-1 en ~70 % de los partidos (con
+   λ≈1,2–1,5 por equipo es lo normal, y Dixon-Coles lo sube). No se muestra como "marcador
+   probable": se muestra el **marcador del pronóstico** (el más probable dentro del resultado
+   pronosticado, con su %) y los **3 exactos más probables** con su % (`pick_score`, `top_scores`).
 
 ## 1f. Cinco ligas (v0.6)
 

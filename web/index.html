@@ -44,6 +44,8 @@
     .probs { display:flex; justify-content:space-between; font-size:13px; font-variant-numeric:tabular-nums; }
     .probs span { display:flex; align-items:center; gap:6px; }
     .stats { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-top:12px; padding-top:10px; border-top:1px solid var(--line); }
+    .stats .soft { font-size:12px; font-weight:400; color:var(--muted); }
+    .scores { margin-top:10px; font-size:12px; color:var(--muted); line-height:1.5; } .scores b { color:var(--text); font-variant-numeric:tabular-nums; }
     .stats div { font-size:12px; color:var(--muted); } .stats b { display:block; color:var(--text); font-size:15px; font-variant-numeric:tabular-nums; }
     .table-wrap { overflow-x:auto; }
     table { width:100%; border-collapse:collapse; font-size:14px; }
@@ -293,10 +295,11 @@
           </div>
           <div class="stats">
             <div>Goles esperados<b>${num(p.expected_goals.home, 2)} – ${num(p.expected_goals.away, 2)}</b></div>
-            <div>Marcador probable<b>${p.most_likely_score.join(' – ')}</b></div>
+            <div>Marcador del pronóstico<b>${p.pick_score.score.join(' – ')} <small class="soft">${pct(p.pick_score.prob)}</small></b></div>
             <div>Más de 2,5 goles<b>${pct(p.over_2_5)}</b></div>
             <div>Marcan ambos<b>${pct(p.btts)}</b></div>
           </div>
+          <div class="scores">Marcadores exactos más probables: ${p.top_scores.map(t => `<b>${t.score.join('-')}</b> ${pct(t.prob)}`).join(' · ')}</div>
         </div>`;
       }).join('');
     }); }

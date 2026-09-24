@@ -17,7 +17,7 @@ Mejoras sobre el modelo básico (todas ajustables, ver `PoissonModel.__init__`):
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 
 from app.data import Match
@@ -51,6 +51,11 @@ class MatchProbabilities:
     over_2_5: float
     btts: float
     most_likely_score: tuple[int, int]
+    # El marcador más probable dentro del resultado pronosticado (1, X o 2): el exacto más probable
+    # casi siempre es 1-1 o 1-0 (~12 %), aunque un equipo sea claro favorito.
+    pick_score: tuple[int, int] = (0, 0)
+    pick_score_prob: float = 0.0
+    top_scores: list[tuple[int, int, float]] = field(default_factory=list)  # los 3 más probables
 
 
 def _poisson_pmf(k: int, lam: float) -> float:
@@ -140,9 +145,11 @@ class PoissonModel:
 
         home_p = draw_p = away_p = over = btts = 0.0
         best, best_p = (0, 0), -1.0
+        grid: dict[tuple[int, int], float] = {}
         for i, p_i in enumerate(ph):
             for j, p_j in enumerate(pa):
                 p = p_i * p_j * self._dixon_coles(i, j, lam_h, lam_a)
+                grid[(i, j)] = p
                 if i > j:
                     home_p += p
                 elif i == j:
@@ -157,6 +164,10 @@ class PoissonModel:
                     best, best_p = (i, j), p
 
         total = home_p + draw_p + away_p  # corrige la masa truncada en MAX_GOALS
+        pick = max((home_p, 1), (draw_p, 0), (away_p, -1))[1]  # 1 local, 0 empate, -1 visitante
+        in_pick = {k: v for k, v in grid.items() if (k[0] > k[1]) - (k[0] < k[1]) == pick}
+        pick_score = max(in_pick, key=in_pick.get)
+        top = sorted(grid.items(), key=lambda kv: kv[1], reverse=True)[:3]
         return MatchProbabilities(
             home_xg=lam_h,
             away_xg=lam_a,
@@ -166,4 +177,7 @@ class PoissonModel:
             over_2_5=over / total,
             btts=btts / total,
             most_likely_score=best,
+            pick_score=pick_score,
+            pick_score_prob=in_pick[pick_score] / total,
+            top_scores=[(i, j, p / total) for (i, j), p in top],
         )
