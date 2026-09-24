@@ -126,6 +126,26 @@ riesgo: se añadió como información, sin volver a gestionar dinero.
 8. **Demo del modo real sin red**: script en el scratchpad que pone `DATA_SOURCE=live`, sustituye
    `app.main.runtime` por un `Runtime` con `MockTransport` y lanza `uvicorn.run(app)` en otro puerto.
 
+## 1d. Despliegue gratis (v0.5.1)
+
+Decisión del usuario: **sin gastar dinero**. Se eligió Render gratis + un "despertador" externo.
+
+1. **Por qué Render gratis**: el actualizador vive dentro del servidor, así que hace falta un
+   proceso siempre encendido. Railway o Render Starter cuestan unos 5–7 $/mes; un VPS exige
+   mantenimiento. Render gratis se duerme tras 15 min sin tráfico, pero se evita con un ping.
+2. **`render.yaml`** en la raíz (Blueprint): `runtime: python`, `plan: free`, región Frankfurt,
+   build `pip install -r backend/requirements.txt`, arranque
+   `cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1`
+   (**un solo proceso**: con varios, cada uno gastaría créditos de The Odds API),
+   `healthCheckPath: /api/health`, `DATA_SOURCE=live` y `ODDS_API_KEY` con `sync: false`
+   (Render la pide en el panel; nunca va en el repo). `.python-version` = `3.11`.
+3. **Despertador**: cron-job.org visita `/api/health` cada 10 min. 750 h gratis/mes ≈ un mes
+   entero. No usar GitHub Actions para esto: en un repo privado, un ping cada 10 min consume
+   más minutos gratis de los que hay.
+4. **Comprobar antes de subir**: validar el YAML y lanzar en local exactamente el `startCommand`
+   con `PORT` definido y `DATA_SOURCE=sample`; `/api/health` debe dar `ok` y `/` un 200.
+5. Pasos para el usuario en el README, sección *Desplegar gratis*.
+
 ## 2. Verificación antes de cada commit
 
 ```bash
@@ -195,7 +215,9 @@ acierto suba la mejor cuota, que las combinadas aparezcan y que cambiar de día 
       día, acierto mínimo, riesgo y combinadas (cuotas solo informativas).
 - [x] **v0.5 — LaLiga real 24/7**: football-data.co.uk + The Odds API, actualizador en segundo
       plano con reparto de créditos, caché, barra de estado. *Pendiente: probarlo contra las APIs
-      reales (la red del entorno de desarrollo las bloqueaba) y alojarlo en un servidor 24/7.*
+      reales (la red del entorno de desarrollo las bloqueaba).*
+- [x] **v0.5.1 — Despliegue gratis**: `render.yaml` para Render (plan gratis) + ping de
+      cron-job.org para que no se duerma. *Pendiente: que el usuario lo conecte en su cuenta.*
 - [ ] **v0.6 — Mejor modelo** (sobre todo la calibración por encima del 80%): ponderación temporal (lo reciente pesa más), Dixon-Coles,
       después gradient boosting con forma, lesiones y descanso; comparar siempre con la evaluación.
 - [ ] **v0.7 — App**: más ligas y deportes, ficha de equipo, comparador de equipos, asistente

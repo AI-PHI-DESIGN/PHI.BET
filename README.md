@@ -42,8 +42,27 @@ cd backend
 Sin clave también funciona con `DATA_SOURCE=live`: las cuotas salen del fichero gratuito de
 football-data.co.uk, que solo se actualiza un par de veces por semana.
 
-Para que esté al día **las 24 horas**, la app tiene que estar encendida en un servidor
-(un VPS o un servicio como Render, Railway o Fly.io), no en tu ordenador.
+Para que esté al día **las 24 horas**, la app tiene que estar encendida en un servidor,
+no en tu ordenador. Ver *Desplegar gratis*.
+
+### Desplegar gratis (Render + cron-job.org)
+
+El repo trae `render.yaml`, así que Render lo configura solo. Coste: 0 €.
+
+1. Entra en [render.com](https://render.com) con tu cuenta de GitHub.
+2. **New → Blueprint**, elige el repositorio `PHI.BET` y la rama que quieras publicar.
+3. Render lee `render.yaml` y pide `ODDS_API_KEY`: pega tu clave de The Odds API o déjala vacía
+   (entonces las cuotas salen de football-data.co.uk). Pulsa **Apply**.
+4. En unos minutos la web queda en `https://phi-bet-XXXX.onrender.com`. Cada push a esa rama
+   la vuelve a desplegar.
+5. **Que no se duerma**: el plan gratis apaga la app tras 15 min sin visitas, y dormida no se
+   actualiza. En [cron-job.org](https://cron-job.org) (gratis) crea un *cronjob* que visite
+   `https://phi-bet-XXXX.onrender.com/api/health` **cada 10 minutos**. Las 750 h gratis al mes
+   de Render bastan para tenerla encendida todo el mes.
+
+Límites del plan gratis: la primera carga tras un reinicio tarda un poco (descarga 3 temporadas),
+y el disco no es permanente, así que la caché se vuelve a descargar al redesplegar. No afecta
+a los datos: siempre salen de las fuentes.
 
 Tests:
 

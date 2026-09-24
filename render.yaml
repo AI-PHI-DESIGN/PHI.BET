@@ -1,0 +1,19 @@
+# Despliegue en Render (plan gratis). Render lee este fichero al crear el servicio con
+# "New > Blueprint". Pasos completos en README.md, sección "Desplegar gratis".
+services:
+  - type: web
+    name: phi-bet
+    runtime: python
+    plan: free
+    region: frankfurt
+    buildCommand: pip install -r backend/requirements.txt
+    # Un solo proceso: el actualizador 24/7 vive dentro del servidor y con varios procesos
+    # cada uno gastaría créditos de The Odds API por su cuenta.
+    startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: DATA_SOURCE
+        value: live
+      - key: ODDS_API_KEY
+        sync: false # opcional: Render la pide al crear el servicio; se puede dejar vacía
