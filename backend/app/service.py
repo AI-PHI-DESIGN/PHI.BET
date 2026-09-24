@@ -16,9 +16,11 @@ class PredictionEngine:
         self.fixtures = {f.id: f for f in fixtures}
         self.poisson = PoissonModel().fit(matches)
         self.elo = EloModel().fit(matches)
-        self._evaluated = evaluation.walk_forward(matches)
+        # Se evalúan los dos últimos tercios del histórico (como mínimo, tras una temporada de ejemplo).
+        min_training = max(evaluation.MIN_TRAINING, len(matches) // 3)
+        self._evaluated = evaluation.walk_forward(matches, min_training)
         ordered = sorted(matches, key=lambda m: m.date)
-        self._performance = evaluation.summarize(self._evaluated, ordered[: evaluation.MIN_TRAINING])
+        self._performance = evaluation.summarize(self._evaluated, ordered[:min_training])
 
     @classmethod
     def from_disk(cls) -> "PredictionEngine":

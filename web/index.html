@@ -82,6 +82,10 @@
     .meter span { position:absolute; left:0; top:0; bottom:0; background:var(--purple); border-radius:4px; }
     .meter i { position:absolute; top:-3px; bottom:-3px; width:2px; background:var(--text); }
     @media (max-width:600px) { .pickcard { grid-template-columns:1fr auto; } .rank { display:none; } }
+    .statusbar { font-size:12px; line-height:1.8; color:var(--muted); margin:-4px 0 16px; }
+    .statusbar .live { display:inline-flex; align-items:center; gap:6px; color:var(--text); }
+    .statusbar .live::before { content:''; width:8px; height:8px; border-radius:50%; background:var(--purple); box-shadow:0 0 0 3px #8b5cf633; }
+    .statusbar .warn { color:var(--warn, #c4b5fd); }
     footer { max-width:1100px; margin:0 auto; padding:16px; color:var(--muted); font-size:13px; }
     @media (max-width:600px) { header p { display:none; } nav { margin-left:auto; } .kpi .val { font-size:18px; } }
   </style>
@@ -90,7 +94,7 @@
   <header>
     <div class="head-inner">
       <h1>PHI<span>.</span>BET</h1>
-      <p>IA de análisis deportivo</p>
+      <p>IA de análisis deportivo · <span id="league">…</span></p>
       <nav>
         <button data-view="predictions" class="active">Predicciones</button>
         <button data-view="picks">Buscador de cuotas</button>
@@ -100,6 +104,7 @@
   </header>
 
   <main>
+    <div class="statusbar" id="status"></div>
     <!-- PREDICCIONES -->
     <div class="view active" id="view-predictions">
       <section>
@@ -183,7 +188,7 @@
     </div>
   </main>
 
-  <footer>Las predicciones son estimaciones estadísticas, no garantías. Datos y cuotas de ejemplo de una liga ficticia.
+  <footer>Las predicciones son estimaciones estadísticas, no garantías.
     PHI.BET no acepta apuestas ni gestiona dinero; si apuestas en otro sitio, hazlo con responsabilidad y solo si eres mayor de edad.</footer>
 
   <script>
@@ -194,7 +199,23 @@
     const PICK = { home: 'Gana local', draw: 'Empate', away: 'Gana visitante' };
     const SIGN = { home: '1', draw: 'X', away: '2' };
     const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-    const get = url => fetch(url).then(r => r.json());
+    const get = url => fetch(url).then(async r => {
+      const body = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(body.detail || 'Error ' + r.status);
+      return body;
+    });
+    const fmtDay = d => d ? new Date(d + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }) : '—';
+    const hhmm = iso => iso ? iso.slice(11, 16) : '';
+    const ago = iso => {
+      if (!iso) return 'nunca';
+      const m = Math.round((Date.now() - new Date(iso)) / 60000);
+      return m < 1 ? 'hace menos de 1 min' : m < 60 ? `hace ${m} min` : m < 1440 ? `hace ${Math.round(m / 60)} h` : `hace ${Math.round(m / 1440)} d`;
+    };
+    const inMin = iso => {
+      if (!iso) return '';
+      const m = Math.round((new Date(iso) - Date.now()) / 60000);
+      return m <= 0 ? 'en breve' : m < 60 ? `en ${m} min` : `en ${Math.round(m / 60)} h`;
+    };
 
     // --- Navegación ---------------------------------------------------------
     function showView(name) {
@@ -208,12 +229,13 @@
     document.querySelectorAll('nav button').forEach(b => b.onclick = () => showView(b.dataset.view));
 
     // --- Predicciones -------------------------------------------------------
-    get('/api/predictions').then(preds => {
+    function loadPredictions() { return get('/api/predictions').then(preds => {
+      if (!preds.length) { document.getElementById('predictions').innerHTML = '<div class="card empty">No hay partidos próximos con datos todavía.</div>'; return; }
       document.getElementById('predictions').innerHTML = preds.map(p => {
         const who = { home: p.home_team, draw: 'Empate', away: p.away_team }[p.pick];
         return `<div class="card">
           <div class="teams">${esc(p.home_team)} vs ${esc(p.away_team)}</div>
-          <div class="meta">${p.date} · Elo ${num(p.elo.home)} – ${num(p.elo.away)}</div>
+          <div class="meta">${fmtDay(p.date)}${p.kickoff ? ' · ' + hhmm(p.kickoff) : ''} · Elo ${num(p.elo.home)} – ${num(p.elo.away)}</div>
           <div class="pick">Pronóstico: ${esc(who)} · ${pct(p.confidence)}</div>
           <div class="bar"><div style="width:${pct(p.probs.home)}"></div><div style="width:${pct(p.probs.draw)}"></div><div style="width:${pct(p.probs.away)}"></div></div>
           <div class="probs">
@@ -229,16 +251,16 @@
           </div>
         </div>`;
       }).join('');
-    });
+    }); }
 
-    get('/api/ratings').then(rs => {
+    const loadRatings = () => get('/api/ratings').then(rs => {
       document.getElementById('ratings').innerHTML = '<tr><th>#</th><th>Equipo</th><th>Elo</th><th>Ataque</th><th>Defensa</th></tr>' +
         rs.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.team)}</td><td class="num">${num(r.elo)}</td><td class="num">${fix(r.attack, 2)}</td><td class="num">${fix(r.defense, 2)}</td></tr>`).join('');
     });
 
     // --- Rendimiento --------------------------------------------------------
     let perf = null;
-    get('/api/performance?recent=20').then(p => { perf = p; if (document.getElementById('view-performance').classList.contains('active')) renderPerformance(); });
+    const loadPerformance = () => get('/api/performance?recent=20').then(p => { perf = p; if (document.getElementById('view-performance').classList.contains('active')) renderPerformance(); });
 
     function renderPerformance() {
       const p = perf;
@@ -352,7 +374,6 @@
     };
     const pk = { date: null, prob: 60, risk: 'low', combine: 1, value: false };
     let pkDatesLoaded = false, pkTimer;
-    const fmtDay = d => new Date(d + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
     const odds2 = n => fix(n, 2);
 
     function pkSeg(id, key, cast) {
@@ -373,10 +394,17 @@
       document.getElementById('pk-risk-help').textContent = RISK_HELP[pk.risk];
       const q = new URLSearchParams({ min_prob: pk.prob / 100, risk: pk.risk, combine: pk.combine, value_only: pk.value, limit: 10 });
       if (pk.date) q.set('date', pk.date);
-      const r = await get('/api/picks?' + q);
+      let r;
+      try { r = await get('/api/picks?' + q); }
+      catch (err) { pkDatesLoaded = false; pk.date = null; document.getElementById('pk-list').innerHTML = `<div class="card empty">${esc(err.message)}</div>`; return; }
       if (!pkDatesLoaded) {
         document.getElementById('pk-date').innerHTML = r.dates.map(d => `<option value="${d}">${fmtDay(d)}</option>`).join('');
         pk.date = r.date; pkDatesLoaded = true;
+      }
+      if (!r.date) {
+        document.getElementById('pk-title').textContent = 'Mejores cuotas';
+        document.getElementById('pk-list').innerHTML = '<div class="card empty">Ahora mismo no hay partidos con cuotas publicadas.</div>';
+        return;
       }
       const h = r.historical;
       document.getElementById('pk-history').innerHTML = h.count
@@ -391,8 +419,9 @@
       }
       list.innerHTML = r.picks.map((p, i) => {
         const gap = p.prob - p.implied_prob;
-        const sels = p.selections.map(s => `<div class="sel">${esc(s.match)} · <b>${esc(s.market)}: ${esc(s.label)}</b>
-          ${p.size > 1 ? `<span class="meta muted">@ ${odds2(s.odds)} · IA ${pct(s.prob)}</span>` : ''}</div>`).join('');
+        const sels = p.selections.map(s => `<div class="sel">${s.kickoff ? `<span class="muted">${hhmm(s.kickoff)}</span> · ` : ''}${esc(s.match)} · <b>${esc(s.market)}: ${esc(s.label)}</b>
+          ${p.size > 1 ? `<span class="meta muted">@ ${odds2(s.odds)} · IA ${pct(s.prob)}</span>` : ''}
+          ${s.bookmaker ? `<span class="meta muted">· ${esc(s.bookmaker)}</span>` : ''}</div>`).join('');
         return `<div class="pickcard">
           <div class="rank">${i + 1}</div>
           <div>${sels}
@@ -405,6 +434,35 @@
 
     let resizeTimer;
     window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { if (perf && document.getElementById('view-performance').classList.contains('active')) renderPerformance(); }, 150); });
+
+    // --- Estado y actualización automática ---------------------------------
+    let lastStamp = null;
+    function loadAll() {
+      const fail = err => console.warn(err.message);
+      loadPredictions().catch(fail); loadRatings().catch(fail); loadPerformance().catch(fail);
+      if (document.getElementById('view-picks').classList.contains('active')) { pkDatesLoaded = false; pk.date = null; loadPicks(); }
+    }
+    async function pollStatus() {
+      let st;
+      try { st = await get('/api/status'); } catch { return; }
+      document.getElementById('league').textContent = st.league;
+      const o = st.feeds.odds, res = st.feeds.results;
+      const bits = [];
+      if (st.data_source === 'sample') {
+        bits.push('<span class="warn">Datos y cuotas de ejemplo (liga ficticia)</span>');
+      } else {
+        bits.push(`<span class="live">Cuotas: ${esc(o.source)} · ${ago(o.updated_at)}</span>`);
+        if (o.next_update) bits.push(`próxima actualización ${inMin(o.next_update)}`);
+        bits.push(`resultados ${ago(res.updated_at)}`);
+        if (st.credits_remaining != null) bits.push(`${st.credits_remaining} créditos restantes`);
+        if (o.error || res.error) bits.push(`<span class="warn">⚠ ${esc(o.error || res.error)}</span>`);
+      }
+      document.getElementById('status').innerHTML = bits.join(' · ');
+      const stamp = [o.updated_at, res.updated_at, st.feeds.scores?.updated_at, st.ready].join('|');
+      if (stamp !== lastStamp) { const first = lastStamp === null; lastStamp = stamp; if (!first || st.ready) loadAll(); }
+    }
+    pollStatus();
+    setInterval(pollStatus, 60000);
 
     let saved = 'predictions';
     try { saved = localStorage.getItem('phibet-view') || 'predictions'; } catch {}

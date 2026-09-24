@@ -25,7 +25,12 @@ class Fixture:
     date: str
     home_team: str
     away_team: str
-    odds: dict[str, float] = field(default_factory=dict)  # claves de app.markets.SELECTIONS
+    # Cuotas por clave de app.markets.SELECTIONS. `odds` es la mejor cuota disponible;
+    # `odds_avg`, la media del mercado (se usa para estimar la probabilidad de la casa).
+    odds: dict[str, float] = field(default_factory=dict)
+    odds_avg: dict[str, float] = field(default_factory=dict)
+    bookmakers: dict[str, str] = field(default_factory=dict)  # casa que ofrece la mejor cuota
+    kickoff: str | None = None  # hora de inicio ISO (hora de Madrid)
 
 
 def load_matches(path: Path = DATA_DIR / "matches.csv") -> list[Match]:

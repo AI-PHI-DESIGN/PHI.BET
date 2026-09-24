@@ -1,4 +1,5 @@
 fastapi>=0.115
 uvicorn[standard]>=0.30
-pytest>=8
 httpx>=0.27
+tzdata>=2024.1  # zonas horarias en sistemas sin base de datos propia (Windows)
+pytest>=8

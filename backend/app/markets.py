@@ -56,10 +56,16 @@ def outcomes(home_goals: int, away_goals: int) -> dict[str, bool]:
 
 
 def implied_probabilities(odds: dict[str, float]) -> dict[str, float]:
-    """Probabilidad que da la casa a cada selección, sin su margen (normalizada por grupo)."""
+    """Probabilidad que da la casa a cada selección, sin su margen (normalizada por grupo).
+
+    Si un grupo llega incompleto no se puede calcular el margen: se usa 1/cuota sin normalizar.
+    """
     result = {}
     for group, total in GROUP_TOTAL.items():
         keys = [k for k in odds if SELECTIONS[k][2] == group]
+        if len(keys) < sum(1 for g in SELECTIONS.values() if g[2] == group):
+            result.update({k: 1.0 / odds[k] for k in keys})
+            continue
         raw = sum(1.0 / odds[k] for k in keys)
         for k in keys:
             result[k] = (1.0 / odds[k]) / raw * total

@@ -92,6 +92,40 @@ riesgo: se añadió como información, sin volver a gestionar dinero.
    con cuota, selecciones y "IA x% · casa y%". En *Rendimiento*, tabla "Acierto según la
    confianza de la IA" con barra (acierto real) y marca (umbral).
 
+## 1c. Datos reales de LaLiga, actualizados 24/7 (v0.5)
+
+1. **Fuentes** (`app/providers/`):
+   - `football_data.py`: resultados de `https://www.football-data.co.uk/mmz4281/<AAAA>/SP1.csv`
+     (código de temporada `2627` = 2026/27; empieza en julio) y próximos partidos con cuotas de
+     `/fixtures.csv` (filtrar `Div == SP1`; columnas `MaxH/D/A`, `AvgH/D/A`, `Max>2.5`, `Avg<2.5`…;
+     hora del Reino Unido, pasar a Madrid). Fechas `dd/mm/aaaa` o `dd/mm/aa`. Gratis, sin clave.
+   - `odds_api.py`: The Odds API v4, deporte `soccer_spain_la_liga`, `/odds?regions=eu&markets=h2h,totals`
+     y `/scores?daysFrom=3`. Por selección se guarda la **mejor cuota (y su casa)** y la **media**
+     (la media se usa para la probabilidad de la casa). `totals` solo con `point == 2.5`.
+     Créditos: `mercados × regiones` por consulta; cabeceras `x-requests-remaining/used/last`.
+   - Descargas con caché en `backend/data/cache/`: si la red falla se usa la última copia.
+     Una temporada que falla se salta; solo es error si no llega ninguna.
+2. **Equipos** (`app/teams.py`): tabla de alias → nombre en español + `normalize()` (sin tildes ni
+   siglas CF/UD/CD…) + parecido con `difflib` (0,85). Los no reconocidos se registran en el log.
+3. **Actualizador** (`app/runtime.py`, `Runtime`): arranca en el `lifespan` de FastAPI (primera
+   carga antes de aceptar peticiones) y luego revisa cada minuto qué fuente toca. Tras cada
+   descarga reentrena `PredictionEngine` y lo sustituye de golpe; si algo falla, sigue el modelo
+   anterior y el error sale en `/api/status`. Reintentos: resultados 30 min, cuotas 15 min.
+   **Reparto de créditos** (`paced_interval`): minutos hasta fin de mes × coste / (créditos
+   restantes − reserva para `/scores`), con un mínimo de 5 min; sin créditos, espera al mes siguiente.
+4. **Configuración** (`app/config.py`): variables de entorno o `.env` (sin dependencias).
+   `DATA_SOURCE=sample|live` (por defecto `sample`, para que tests y demos no dependan de la red).
+   `.env.example` documenta todas. `conftest.py` fuerza `DATA_SOURCE=sample`.
+5. **Seguridad de la clave**: el logger de `httpx` se sube a WARNING (escribe la URL completa, que
+   lleva `apiKey`) y los errores de The Odds API usan un mensaje propio sin URL (hay un test).
+6. **Web**: barra de estado (fuente, "hace X min", próxima actualización, créditos, errores);
+   consulta `/api/status` cada 60 s y recarga los datos cuando cambia la hora de actualización.
+   Hora de cada partido y casa de la mejor cuota en el buscador.
+7. **Tests sin red**: `httpx.MockTransport` para simular ambos proveedores (lectura de datos,
+   cabeceras de créditos, fallo de red con caché, modo sin clave, reparto de créditos).
+8. **Demo del modo real sin red**: script en el scratchpad que pone `DATA_SOURCE=live`, sustituye
+   `app.main.runtime` por un `Runtime` con `MockTransport` y lanza `uvicorn.run(app)` en otro puerto.
+
 ## 2. Verificación antes de cada commit
 
 ```bash
@@ -128,7 +162,7 @@ Trucos CSS: los hijos de grid llevan `min-width:0`, las columnas usan
 Para arrancar y parar el servidor, usar un script en el scratchpad que guarde el PID
 (`server.sh start|stop`: `nohup uvicorn … & echo $! > uv.pid` / `kill $(cat uv.pid)`).
 **No** buscar el proceso con `pkill -f` ni `ps | grep` con el comando en la misma línea: el
-patrón coincide con la propia shell y la mata. Si una captura falla con 404 en un endpoint nuevo,
+patrón coincide con la propia shell y la mata. Para liberar un puerto: `fuser -k 8765/tcp`. Si una captura falla con 404 en un endpoint nuevo,
 probablemente siga vivo un servidor antiguo en el puerto.
 
 En el navegador, probar también las interacciones: en el buscador, que subir el riesgo o bajar el
@@ -159,8 +193,9 @@ acierto suba la mejor cuota, que las combinadas aparezcan y que cambiar de día 
       (walk-forward, acierto, Brier, log-loss, calibración, referencia).
 - [x] **v0.4 — Acierto y buscador**: acierto según la confianza de la IA; buscador de cuotas por
       día, acierto mínimo, riesgo y combinadas (cuotas solo informativas).
-- [ ] **v0.5 — Datos reales**: proveedor de resultados y calendario (football-data.org,
-      API-Football) y de cuotas (The Odds API); claves en `.env`; caché local.
+- [x] **v0.5 — LaLiga real 24/7**: football-data.co.uk + The Odds API, actualizador en segundo
+      plano con reparto de créditos, caché, barra de estado. *Pendiente: probarlo contra las APIs
+      reales (la red del entorno de desarrollo las bloqueaba) y alojarlo en un servidor 24/7.*
 - [ ] **v0.6 — Mejor modelo** (sobre todo la calibración por encima del 80%): ponderación temporal (lo reciente pesa más), Dixon-Coles,
       después gradient boosting con forma, lesiones y descanso; comparar siempre con la evaluación.
 - [ ] **v0.7 — App**: más ligas y deportes, ficha de equipo, comparador de equipos, asistente

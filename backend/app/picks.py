@@ -23,10 +23,13 @@ def candidate_selections(predictions: list[dict], fixtures: dict) -> list[dict]:
     """Todas las selecciones con cuota de los partidos dados, con la probabilidad de la IA y la de la casa."""
     out = []
     for pred in predictions:
-        odds = fixtures[pred["id"]].odds
+        fixture = fixtures[pred["id"]]
+        odds = fixture.odds
         if not odds:
             continue
-        implied = markets.implied_probabilities(odds)
+        # La probabilidad de la casa sale de la cuota media del mercado si la hay (más estable
+        # que la mejor cuota, que puede ser un error puntual de una sola casa).
+        implied = markets.implied_probabilities(fixture.odds_avg or odds)
         for key, prob in pred["markets"].items():
             if key not in odds:
                 continue
@@ -41,7 +44,9 @@ def candidate_selections(predictions: list[dict], fixtures: dict) -> list[dict]:
                     "label": label,
                     "odds": odds[key],
                     "prob": prob,
-                    "implied_prob": round(implied[key], 4),
+                    "implied_prob": round(implied.get(key, 1.0 / odds[key]), 4),
+                    "bookmaker": fixture.bookmakers.get(key, ""),
+                    "kickoff": fixture.kickoff,
                 }
             )
     return out
