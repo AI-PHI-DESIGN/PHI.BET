@@ -1,3 +1,4 @@
+import json
 from datetime import date, datetime, timezone
 
 import httpx
@@ -133,3 +134,24 @@ def test_odds_client_errors_never_leak_the_key():
     with pytest.raises(httpx.HTTPStatusError) as err:
         client.fetch_odds()
     assert "SECRETO" not in str(err.value)
+
+
+def test_openfootball_parses_both_score_formats_and_next_round():
+    from datetime import date
+
+    from app.providers import openfootball
+
+    text = json.dumps({"matches": [
+        {"date": "2026-09-19", "team1": "Real Madrid CF", "team2": "FC Barcelona", "score": {"ft": [2, 1]}},
+        {"date": "2026-09-20", "team1": "Sevilla FC", "team2": "Real Betis Balompié", "score": [0, 0]},
+        {"date": "2026-10-09", "time": "21:00", "team1": "Málaga CF", "team2": "Getafe CF"},
+        {"date": "2026-10-15", "team1": "Girona FC", "team2": "Elche CF"},
+        {"date": "2026-10-20", "team1": "Valencia CF", "team2": "Villarreal CF"},
+    ]})
+    played, upcoming = openfootball.parse(text)
+    assert [(m.home_team, m.home_goals, m.away_goals) for m in played] == [("Real Madrid", 2, 1), ("Sevilla", 0, 0)]
+    assert played[1].away_team == "Real Betis"
+    # Parón de 19 días: la próxima jornada sigue apareciendo, y solo hasta 7 días después de su primer partido.
+    nxt = openfootball.next_round(upcoming, date(2026, 9, 21))
+    assert [f.home_team for f in nxt] == ["Málaga", "Girona"]
+    assert nxt[0].kickoff == "2026-10-09T21:00" and not nxt[0].odds

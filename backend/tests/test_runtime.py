@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import httpx
 
@@ -44,21 +44,21 @@ class FakeProviders:
         return httpx.Response(404)
 
 
-def make_runtime(tmp_path, providers, key="k"):
-    settings = Settings(data_source="live", odds_api_key=key, cache_dir=tmp_path, history_seasons=2)
+def make_runtime(tmp_path, providers, key="k", leagues=("laliga",)):
+    settings = Settings(data_source="live", odds_api_key=key, cache_dir=tmp_path, history_seasons=2, leagues=leagues)
     return Runtime(settings, http=httpx.Client(transport=httpx.MockTransport(providers)))
 
 
 def test_live_refresh_builds_engine_with_real_feeds(tmp_path):
     providers = FakeProviders()
     rt = make_runtime(tmp_path, providers)
-    assert rt.engine is None
+    assert rt.engine() is None
     rt.refresh_due()
-    assert rt.engine is not None
-    assert len(rt.engine.matches) == 168
-    [fixture] = rt.engine.fixtures.values()
+    assert rt.engine() is not None
+    assert len(rt.engine().matches) == 168
+    [fixture] = rt.engine().fixtures.values()
     assert fixture.odds["1"] == 1.7 and fixture.bookmakers["1"] == "Casa B"
-    picks = rt.engine.picks(None, 0.3, "high")
+    picks = rt.engine().picks(None, 0.3, "high")
     assert picks["picks"] and picks["date"] == fixture.date
 
     status = rt.status()
@@ -88,7 +88,7 @@ def test_network_failure_keeps_serving_from_cache(tmp_path):
     assert rt.feeds["results"].error is None  # se leyó la caché
     rt.refresh_odds()
     assert rt.feeds["odds"].error  # sin caché de cuotas: se informa del error...
-    assert rt.engine is not None  # ...pero la app sigue funcionando
+    assert rt.engine() is not None  # ...pero la app sigue funcionando
 
 
 def test_without_api_key_uses_free_fixtures_file(tmp_path):
@@ -104,3 +104,87 @@ def test_settings_from_env():
     s = load_settings({"DATA_SOURCE": "live", "ODDS_API_KEY": "abc", "ODDS_MIN_INTERVAL_MINUTES": "10"})
     assert s.data_source == "live" and s.odds_api_key == "abc" and s.odds_min_interval == 10
     assert load_settings({}).data_source == "sample"
+
+
+def openfootball_json(played: list[tuple], upcoming: list[tuple]) -> dict:
+    return {"name": "x", "matches": [
+        *({"date": d, "team1": h, "team2": a, "score": {"ft": [hg, ag]}} for d, h, a, hg, ag in played),
+        *({"date": d, "time": "21:00", "team1": h, "team2": a} for d, h, a in upcoming),
+    ]}
+
+
+class MultiLeagueProviders(FakeProviders):
+    """LaLiga desde football-data.co.uk; la Premier solo desde openfootball (football-data falla)."""
+
+    def __init__(self):
+        super().__init__()
+        today = datetime.now(timezone.utc).date()
+        start = date(2026, 1, 1)
+        teams = ["Arsenal FC", "Chelsea FC", "Liverpool FC", "Everton FC"]
+        played = [
+            ((start + timedelta(days=7 * i)).isoformat(), teams[i % 4], teams[(i + 1 + i // 4) % 4], i % 3, (i + 1) % 2)
+            for i in range(40)
+        ]
+        played = [p for p in played if p[1] != p[2]]
+        self.premier = openfootball_json(played, [((today + timedelta(days=3)).isoformat(), "Arsenal FC", "Chelsea FC")])
+
+    def __call__(self, request):
+        if request.url.host == "raw.githubusercontent.com":
+            self.calls.append(request.url.path)
+            if self.fail:
+                return httpx.Response(503)
+            if request.url.path.endswith("/en.1.json") and "/2026-27/" in request.url.path:
+                return httpx.Response(200, json=self.premier)
+            return httpx.Response(404)
+        if request.url.host == "www.football-data.co.uk" and "/E0.csv" in request.url.path:
+            self.calls.append(request.url.path)
+            return httpx.Response(503)
+        return super().__call__(request)
+
+
+def test_several_leagues_with_openfootball_fallback(tmp_path):
+    providers = MultiLeagueProviders()
+    rt = make_runtime(tmp_path, providers, key=None, leagues=("laliga", "premier"))
+    rt.refresh_due()
+    laliga, premier = rt.leagues["laliga"], rt.leagues["premier"]
+    assert laliga.results_source == "football-data.co.uk" and len(laliga.engine.matches) == 168
+    assert premier.results_source == "openfootball"
+    assert premier.engine is not None and premier.engine.matches[0].home_team in ("Arsenal", "Chelsea", "Liverpool", "Everton")
+    # El partido de la semana llega del calendario de openfootball, aunque no tenga cuotas.
+    [fixture] = premier.engine.fixtures.values()
+    assert (fixture.home_team, fixture.away_team) == ("Arsenal", "Chelsea") and not fixture.odds
+    assert rt.engine("premier") is premier.engine
+    assert {lg["key"] for lg in rt.status()["leagues"]} == {"laliga", "premier"}
+    assert rt.feeds["results"].error is None
+
+
+def test_odds_refresh_reuses_trained_model(tmp_path):
+    providers = FakeProviders()
+    rt = make_runtime(tmp_path, providers)
+    rt.refresh_due()
+    before = rt.engine()
+    rt.refresh_odds()  # mismos resultados: no se vuelve a entrenar
+    assert rt.engine() is not before
+    assert rt.engine().poisson is before.poisson
+
+
+def test_merge_fixtures_skips_calendar_duplicates():
+    from app.data import Fixture
+    from app.runtime import merge_fixtures
+
+    with_odds = [Fixture("a", "2026-10-03", "Real Madrid", "Barcelona", odds={"1": 2.0})]
+    calendar = [
+        Fixture("b", "2026-10-03", "Real Madrid", "FC Barcelona B"),  # mismo local ese día: repetido
+        Fixture("c", "2026-10-03", "Sevilla", "Betis"),
+    ]
+    assert [f.id for f in merge_fixtures(with_odds, calendar)] == ["a", "c"]
+
+
+def test_league_settings_from_env():
+    s = load_settings({"LEAGUES": "laliga, premier", "ODDS_API_LEAGUES": "premier"})
+    assert s.leagues == ("laliga", "premier") and s.odds_api_leagues == ("premier",)
+    assert len(load_settings({"LEAGUES": "all"}).leagues) == 5
+    import pytest
+
+    with pytest.raises(ValueError):
+        load_settings({"LEAGUES": "laliga,liga-inventada"})

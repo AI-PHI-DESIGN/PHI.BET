@@ -66,3 +66,12 @@ def test_performance_by_confidence():
 
 def test_ratings():
     assert len(client.get("/api/ratings").json()) == 8
+
+
+def test_leagues_endpoint_and_league_param():
+    [league] = client.get("/api/leagues").json()
+    assert league["key"] == "ejemplo" and league["ready"] and league["fixtures"] == 8
+    assert client.get("/api/predictions", params={"league": "ejemplo"}).status_code == 200
+    assert client.get("/api/predictions", params={"league": "inventada"}).status_code == 404
+    status = client.get("/api/status").json()
+    assert status["default_league"] == "ejemplo" and status["leagues"][0]["name"] == "Liga de ejemplo"

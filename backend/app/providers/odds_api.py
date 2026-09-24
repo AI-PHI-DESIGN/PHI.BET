@@ -1,4 +1,4 @@
-"""The Odds API: cuotas de LaLiga de muchas casas y resultados recientes, casi en tiempo real.
+"""The Odds API: cuotas de muchas casas y resultados recientes, casi en tiempo real.
 
 Necesita una clave (ODDS_API_KEY). Cada consulta gasta créditos del plan mensual:
 - /odds: nº de mercados × nº de regiones (h2h + totals en "eu" = 2 créditos).
@@ -23,7 +23,7 @@ from app.data import Fixture, Match
 log = logging.getLogger(__name__)
 
 BASE_URL = "https://api.the-odds-api.com/v4"
-SPORT = "soccer_spain_la_liga"
+SPORT = "soccer_spain_la_liga"  # deporte por defecto; cada liga tiene el suyo (app.leagues)
 SOURCE = "The Odds API"
 MADRID = ZoneInfo("Europe/Madrid")
 
@@ -122,10 +122,10 @@ class OddsApiClient:
             raise httpx.HTTPStatusError(f"The Odds API: {reason}", request=r.request, response=r)
         return r.json()
 
-    def fetch_odds(self) -> list[Fixture]:
+    def fetch_odds(self, sport: str = SPORT) -> list[Fixture]:
         return parse_odds(
-            self._get(f"/sports/{SPORT}/odds", regions=self.regions, markets=self.markets, oddsFormat="decimal", dateFormat="iso")
+            self._get(f"/sports/{sport}/odds", regions=self.regions, markets=self.markets, oddsFormat="decimal", dateFormat="iso")
         )
 
-    def fetch_scores(self, days_from: int = 3) -> list[Match]:
-        return parse_scores(self._get(f"/sports/{SPORT}/scores", daysFrom=days_from, dateFormat="iso"))
+    def fetch_scores(self, days_from: int = 3, sport: str = SPORT) -> list[Match]:
+        return parse_scores(self._get(f"/sports/{sport}/scores", daysFrom=days_from, dateFormat="iso"))

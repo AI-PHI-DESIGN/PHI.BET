@@ -7,13 +7,18 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from app.data import DATA_DIR
+from app.leagues import DEFAULT_LEAGUE, LEAGUES, parse_keys
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 
 
 @dataclass(frozen=True)
 class Settings:
-    data_source: str = "sample"  # "sample" (liga ficticia) o "live" (LaLiga real)
+    data_source: str = "sample"  # "sample" (liga ficticia) o "live" (ligas reales)
+    leagues: tuple[str, ...] = tuple(LEAGUES)  # ligas que se analizan (app.leagues)
+    # Ligas cuyas cuotas salen de The Odds API (cada una gasta créditos); el resto usa
+    # football-data.co.uk. Con el plan gratis (500 créditos/mes) conviene dejar solo una.
+    odds_api_leagues: tuple[str, ...] = (DEFAULT_LEAGUE,)
     odds_api_key: str | None = None
     odds_regions: str = "eu"
     odds_markets: str = "h2h,totals"
@@ -48,6 +53,8 @@ def load_settings(env: dict[str, str] | None = None) -> Settings:
         raise ValueError("DATA_SOURCE debe ser 'sample' o 'live'")
     return Settings(
         data_source=source,
+        leagues=parse_keys(env.get("LEAGUES"), d.leagues),
+        odds_api_leagues=parse_keys(env.get("ODDS_API_LEAGUES"), d.odds_api_leagues),
         odds_api_key=env.get("ODDS_API_KEY") or None,
         odds_regions=env.get("ODDS_REGIONS", d.odds_regions),
         odds_markets=env.get("ODDS_MARKETS", d.odds_markets),

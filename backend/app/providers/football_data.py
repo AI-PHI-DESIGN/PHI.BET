@@ -1,7 +1,8 @@
-"""football-data.co.uk: resultados históricos de LaLiga y próximos partidos con cuotas (gratis, sin clave).
+"""football-data.co.uk: resultados históricos y próximos partidos con cuotas (gratis, sin clave).
 
-- Resultados: https://www.football-data.co.uk/mmz4281/<temporada>/SP1.csv  (p. ej. 2627 = 2026/27)
-- Próximos partidos: https://www.football-data.co.uk/fixtures.csv  (todas las ligas; se filtra SP1)
+- Resultados: https://www.football-data.co.uk/mmz4281/<temporada>/<división>.csv
+  (p. ej. 2627/SP1.csv = LaLiga 2026/27; E0 Premier, I1 Serie A, D1 Bundesliga, F1 Ligue 1)
+- Próximos partidos: https://www.football-data.co.uk/fixtures.csv  (todas las ligas en un fichero)
 Los ficheros se actualizan un par de veces por semana. Cada descarga se guarda en caché para
 seguir funcionando si la web no responde.
 """
@@ -23,7 +24,7 @@ from app.data import Fixture, Match
 log = logging.getLogger(__name__)
 
 BASE_URL = "https://www.football-data.co.uk"
-DIVISION = "SP1"  # LaLiga (Primera División)
+DIVISION = "SP1"  # LaLiga (Primera División), la división por defecto
 SOURCE = "football-data.co.uk"
 LONDON, MADRID = ZoneInfo("Europe/London"), ZoneInfo("Europe/Madrid")
 
@@ -84,11 +85,11 @@ def parse_results(text: str) -> list[Match]:
     return matches
 
 
-def parse_fixtures(text: str, today: date | None = None) -> list[Fixture]:
+def parse_fixtures(text: str, today: date | None = None, division: str = DIVISION) -> list[Fixture]:
     today = today or date.today()
     fixtures = []
     for row in _rows(text):
-        if row.get("Div") != DIVISION or not row.get("HomeTeam"):
+        if row.get("Div") != division or not row.get("HomeTeam"):
             continue
         day = _parse_date(row["Date"])
         time = (row.get("Time") or "").strip()
@@ -122,7 +123,7 @@ def parse_fixtures(text: str, today: date | None = None) -> list[Fixture]:
     return fixtures
 
 
-def _download(client: httpx.Client, url: str, cache: Path) -> str:
+def download(client: httpx.Client, url: str, cache: Path) -> str:
     """Descarga y guarda en caché; si falla, usa la última copia guardada."""
     try:
         r = client.get(url, timeout=30)
@@ -138,7 +139,9 @@ def _download(client: httpx.Client, url: str, cache: Path) -> str:
         raise
 
 
-def fetch_results(client: httpx.Client, cache_dir: Path, seasons: int, today: date | None = None) -> list[Match]:
+def fetch_results(
+    client: httpx.Client, cache_dir: Path, seasons: int, today: date | None = None, division: str = DIVISION
+) -> list[Match]:
     """Resultados de las últimas `seasons` temporadas. Una temporada que falle (y no esté en caché)
     se salta con un aviso; solo es un error si no se consigue ninguna."""
     start = season_start(today or date.today())
@@ -147,7 +150,7 @@ def fetch_results(client: httpx.Client, cache_dir: Path, seasons: int, today: da
     for year in range(start - seasons + 1, start + 1):
         code = season_code(year)
         try:
-            text = _download(client, f"{BASE_URL}/mmz4281/{code}/{DIVISION}.csv", cache_dir / f"{DIVISION}_{code}.csv")
+            text = download(client, f"{BASE_URL}/mmz4281/{code}/{division}.csv", cache_dir / f"{division}_{code}.csv")
         except httpx.HTTPError as e:
             log.warning("Temporada %s no disponible: %s", code, e)
             errors.append(e)
@@ -158,6 +161,10 @@ def fetch_results(client: httpx.Client, cache_dir: Path, seasons: int, today: da
     return matches
 
 
-def fetch_fixtures(client: httpx.Client, cache_dir: Path, today: date | None = None) -> list[Fixture]:
-    text = _download(client, f"{BASE_URL}/fixtures.csv", cache_dir / "fixtures.csv")
-    return parse_fixtures(text, today)
+def fetch_fixtures_text(client: httpx.Client, cache_dir: Path) -> str:
+    """El fichero de próximos partidos (todas las ligas): se descarga una vez y se filtra por liga."""
+    return download(client, f"{BASE_URL}/fixtures.csv", cache_dir / "fixtures.csv")
+
+
+def fetch_fixtures(client: httpx.Client, cache_dir: Path, today: date | None = None, division: str = DIVISION) -> list[Fixture]:
+    return parse_fixtures(fetch_fixtures_text(client, cache_dir), today, division)

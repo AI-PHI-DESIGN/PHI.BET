@@ -11,9 +11,15 @@ from app.models.poisson import PoissonModel
 
 
 class PredictionEngine:
-    def __init__(self, matches: list[Match], fixtures: list[Fixture]) -> None:
+    def __init__(self, matches: list[Match], fixtures: list[Fixture], base: "PredictionEngine | None" = None) -> None:
         self.matches = matches
         self.fixtures = {f.id: f for f in fixtures}
+        if base is not None and base.matches == matches:
+            # Mismos resultados (solo cambian cuotas o calendario): se reutiliza lo ya entrenado,
+            # que es lo caro (la evaluación reentrena el modelo una vez por jornada).
+            self.poisson, self.elo = base.poisson, base.elo
+            self._evaluated, self._performance = base._evaluated, base._performance
+            return
         self.poisson = PoissonModel().fit(matches)
         self.elo = EloModel().fit(matches)
         # Se evalúan los dos últimos tercios del histórico (como mínimo, tras una temporada de ejemplo).

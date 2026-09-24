@@ -95,6 +95,13 @@
     .statusbar .live { display:inline-flex; align-items:center; gap:6px; color:var(--text); }
     .statusbar .live::before { content:''; width:8px; height:8px; border-radius:50%; background:var(--purple); box-shadow:0 0 0 3px #8b5cf633; }
     .statusbar .warn { color:var(--warn, #c4b5fd); }
+    .leagues { display:flex; gap:8px; overflow-x:auto; margin:0 -16px 12px; padding:0 16px 4px; scrollbar-width:none; }
+    .leagues::-webkit-scrollbar { display:none; }
+    .leagues:empty { display:none; }
+    .leagues button { flex:none; background:var(--card); border:1px solid var(--line); color:var(--muted); border-radius:99px;
+      padding:7px 14px; font:inherit; font-size:14px; cursor:pointer; white-space:nowrap; }
+    .leagues button.active { background:var(--purple-deep); border-color:var(--purple); color:#fff; }
+    .leagues button:disabled { opacity:.45; cursor:default; }
     .install { display:none; background:var(--purple); color:#fff; border:0; border-radius:8px; padding:8px 12px; font:inherit; font-size:13px; cursor:pointer; }
     .install.show { display:inline-block; }
     .ios-hint { display:none; position:fixed; left:12px; right:12px; bottom:max(12px, env(safe-area-inset-bottom)); z-index:10;
@@ -133,6 +140,7 @@
   </header>
 
   <main>
+    <div class="leagues" id="leagues" role="tablist" aria-label="Liga"></div>
     <div class="statusbar" id="status"></div>
     <!-- PREDICCIONES -->
     <div class="view active" id="view-predictions">
@@ -240,6 +248,10 @@
       if (!r.ok) throw new Error(body.detail || 'Error ' + r.status);
       return body;
     });
+    // Liga elegida: se añade a todas las consultas y se recuerda en el navegador.
+    let league = null;
+    try { league = localStorage.getItem('phibet-league'); } catch {}
+    const withLeague = url => league ? url + (url.includes('?') ? '&' : '?') + 'league=' + encodeURIComponent(league) : url;
     const fmtDay = d => d ? new Date(d + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }) : '—';
     const hhmm = iso => iso ? iso.slice(11, 16) : '';
     const ago = iso => {
@@ -265,7 +277,7 @@
     document.querySelectorAll('nav button').forEach(b => b.onclick = () => showView(b.dataset.view));
 
     // --- Predicciones -------------------------------------------------------
-    function loadPredictions() { return get('/api/predictions').then(preds => {
+    function loadPredictions() { return get(withLeague('/api/predictions')).then(preds => {
       if (!preds.length) { document.getElementById('predictions').innerHTML = '<div class="card empty">No hay partidos próximos con datos todavía.</div>'; return; }
       document.getElementById('predictions').innerHTML = preds.map(p => {
         const who = { home: p.home_team, draw: 'Empate', away: p.away_team }[p.pick];
@@ -289,14 +301,14 @@
       }).join('');
     }); }
 
-    const loadRatings = () => get('/api/ratings').then(rs => {
+    const loadRatings = () => get(withLeague('/api/ratings')).then(rs => {
       document.getElementById('ratings').innerHTML = '<tr><th>#</th><th>Equipo</th><th>Elo</th><th>Ataque</th><th>Defensa</th></tr>' +
         rs.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.team)}</td><td class="num">${num(r.elo)}</td><td class="num">${fix(r.attack, 2)}</td><td class="num">${fix(r.defense, 2)}</td></tr>`).join('');
     });
 
     // --- Rendimiento --------------------------------------------------------
     let perf = null;
-    const loadPerformance = () => get('/api/performance?recent=20').then(p => { perf = p; if (document.getElementById('view-performance').classList.contains('active')) renderPerformance(); });
+    const loadPerformance = () => get(withLeague('/api/performance?recent=20')).then(p => { perf = p; if (document.getElementById('view-performance').classList.contains('active')) renderPerformance(); });
 
     function renderPerformance() {
       const p = perf;
@@ -343,11 +355,12 @@
       const el = document.getElementById('month-chart'), f = frame(el);
       const y = v => f.P.t + (1 - v) * f.ih;
       const band = f.iw / rows.length, bw = Math.min(40, band * 0.6);
+      const every = Math.ceil(rows.length / Math.max(1, Math.floor(f.iw / 46))); // etiquetas sin solaparse
       const bars = rows.map((r, i) => {
         const cx = f.P.l + band * (i + 0.5), top = y(r.accuracy), h = Math.max(1, y(0) - top), x0 = cx - bw / 2, rad = Math.min(4, h / 2);
         return `<g class="hit" data-i="${i}"><rect x="${cx - band / 2}" y="${f.P.t}" width="${band}" height="${f.ih}" fill="transparent"/>
           <path d="M${x0},${y(0)}V${top + rad}Q${x0},${top} ${x0 + rad},${top}H${x0 + bw - rad}Q${x0 + bw},${top} ${x0 + bw},${top + rad}V${y(0)}Z" fill="${css('--purple')}"/>
-          <text x="${cx}" y="${f.H - 8}" text-anchor="middle" font-size="11" fill="${css('--muted')}">${monthLabel(r.month)}</text></g>`;
+          ${i % every ? '' : `<text x="${cx}" y="${f.H - 8}" text-anchor="middle" font-size="11" fill="${css('--muted')}">${monthLabel(r.month)}</text>`}</g>`;
       }).join('');
       el.innerHTML = `<svg viewBox="0 0 ${f.W} ${f.H}" role="img" aria-label="Porcentaje de acierto por mes">
           ${yAxis(f, [0, .25, .5, .75, 1], y, t => t * 100 + '%')}${bars}
@@ -431,7 +444,7 @@
       const q = new URLSearchParams({ min_prob: pk.prob / 100, risk: pk.risk, combine: pk.combine, value_only: pk.value, limit: 10 });
       if (pk.date) q.set('date', pk.date);
       let r;
-      try { r = await get('/api/picks?' + q); }
+      try { r = await get(withLeague('/api/picks?' + q)); }
       catch (err) { pkDatesLoaded = false; pk.date = null; document.getElementById('pk-list').innerHTML = `<div class="card empty">${esc(err.message)}</div>`; return; }
       if (!pkDatesLoaded) {
         document.getElementById('pk-date').innerHTML = r.dates.map(d => `<option value="${d}">${fmtDay(d)}</option>`).join('');
@@ -481,7 +494,11 @@
     async function pollStatus() {
       let st;
       try { st = await get('/api/status'); } catch { return; }
-      document.getElementById('league').textContent = st.league;
+      const keys = st.leagues.map(l => l.key);
+      if (!keys.includes(league)) league = st.default_league;
+      renderLeagues(st.leagues);
+      const cur = st.leagues.find(l => l.key === league);
+      document.getElementById('league').textContent = cur ? cur.name : st.league;
       const o = st.feeds.odds, res = st.feeds.results;
       const bits = [];
       if (st.data_source === 'sample') {
@@ -491,14 +508,36 @@
         if (o.next_update) bits.push(`próxima actualización ${inMin(o.next_update)}`);
         bits.push(`resultados ${ago(res.updated_at)}`);
         if (st.credits_remaining != null) bits.push(`${st.credits_remaining} créditos restantes`);
-        if (o.error || res.error) bits.push(`<span class="warn">⚠ ${esc(o.error || res.error)}</span>`);
+        if (o.error) bits.push(`<span class="warn">⚠ Cuotas no disponibles (${esc(o.error)})</span>`);
+        if (cur && cur.error) bits.push(`<span class="warn">⚠ ${esc(cur.name)}: ${esc(cur.error)}</span>`);
+        else if (cur && cur.ready && !cur.with_odds) bits.push('esta liga aún no tiene cuotas publicadas');
+        if (!st.ready) bits.push('<span class="warn">Descargando datos y entrenando la IA… (la primera vez tarda un par de minutos)</span>');
       }
       document.getElementById('status').innerHTML = bits.join(' · ');
-      const stamp = [o.updated_at, res.updated_at, st.feeds.scores?.updated_at, st.ready].join('|');
+      const stamp = [o.updated_at, res.updated_at, st.feeds.scores?.updated_at, st.leagues.filter(l => l.ready).length].join('|');
       if (stamp !== lastStamp) { const first = lastStamp === null; lastStamp = stamp; if (!first || st.ready) loadAll(); }
+    }
+    function renderLeagues(list) {
+      const box = document.getElementById('leagues');
+      if (list.length < 2) { box.innerHTML = ''; return; }
+      box.innerHTML = list.map(l => `<button role="tab" data-league="${esc(l.key)}" class="${l.key === league ? 'active' : ''}"
+        aria-selected="${l.key === league}" ${l.ready ? '' : 'disabled title="Cargando…"'}>${esc(l.name)}</button>`).join('');
+      box.querySelectorAll('button').forEach(b => b.onclick = () => selectLeague(b.dataset.league, list));
+    }
+    function selectLeague(key, list) {
+      if (key === league) return;
+      league = key;
+      try { localStorage.setItem('phibet-league', key); } catch {}
+      renderLeagues(list);
+      const cur = list.find(l => l.key === key);
+      document.getElementById('league').textContent = cur ? cur.name : '';
+      perf = null; pkDatesLoaded = false; pk.date = null;
+      loadAll();
     }
     pollStatus();
     setInterval(pollStatus, 60000);
+    // Mientras la IA se prepara (primer arranque), se pregunta más a menudo.
+    const warmup = setInterval(() => pollStatus().then(() => { if (lastStamp && !lastStamp.endsWith('|0')) clearInterval(warmup); }), 5000);
 
     let saved = 'predictions';
     try { saved = localStorage.getItem('phibet-view') || 'predictions'; } catch {}

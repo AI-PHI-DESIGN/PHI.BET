@@ -27,30 +27,43 @@ runtime = Runtime(load_settings())
 async def lifespan(_: FastAPI):
     task = None
     if runtime.live:
-        await asyncio.to_thread(runtime.refresh_due)  # primera carga antes de aceptar peticiones
+        # La primera carga se hace en segundo plano: el servidor responde desde el primer segundo
+        # (/api/health dice "loading" y la web espera) aunque descargar y entrenar tarde un rato.
         task = asyncio.create_task(runtime.run_forever())
     yield
     if task:
         task.cancel()
 
 
-app = FastAPI(title="PHI.BET", description="IA de análisis deportivo", version="0.5.0", lifespan=lifespan)
+app = FastAPI(title="PHI.BET", description="IA de análisis deportivo", version="0.6.0", lifespan=lifespan)
 
 
-def engine() -> PredictionEngine:
-    if runtime.engine is None:
+LeagueParam = Query(None, description="Liga (ver /api/leagues); por defecto, la primera con datos")
+
+
+def engine(league: str | None = None) -> PredictionEngine:
+    if league is not None and league not in runtime.leagues:
+        raise HTTPException(status_code=404, detail=f"Liga desconocida; disponibles: {', '.join(runtime.leagues)}")
+    e = runtime.engine(league)
+    if e is None:
         raise HTTPException(status_code=503, detail="Los datos todavía no están disponibles; mira /api/status")
-    return runtime.engine
+    return e
 
 
 @app.get("/api/health")
 def health() -> dict:
-    e = runtime.engine
+    engines = [d.engine for d in runtime.leagues.values() if d.engine is not None]
     return {
-        "status": "ok" if e else "loading",
-        "matches_trained": len(e.matches) if e else 0,
-        "fixtures": len(e.fixtures) if e else 0,
+        "status": "ok" if engines else "loading",
+        "leagues_ready": len(engines),
+        "matches_trained": sum(len(e.matches) for e in engines),
+        "fixtures": sum(len(e.fixtures) for e in engines),
     }
+
+
+@app.get("/api/leagues")
+def leagues() -> list[dict]:
+    return runtime.league_list()
 
 
 @app.get("/api/status")
@@ -59,13 +72,13 @@ def status() -> dict:
 
 
 @app.get("/api/predictions")
-def predictions() -> list[dict]:
-    return engine().predictions()
+def predictions(league: str | None = LeagueParam) -> list[dict]:
+    return engine(league).predictions()
 
 
 @app.get("/api/predictions/{fixture_id}")
-def prediction(fixture_id: str) -> dict:
-    e = engine()
+def prediction(fixture_id: str, league: str | None = LeagueParam) -> dict:
+    e = engine(league)
     fixture = e.fixtures.get(fixture_id)
     if fixture is None:
         raise HTTPException(status_code=404, detail="Partido no encontrado")
@@ -73,8 +86,8 @@ def prediction(fixture_id: str) -> dict:
 
 
 @app.get("/api/performance")
-def performance(recent: int = Query(20, ge=0, le=500)) -> dict:
-    return engine().performance(recent)
+def performance(recent: int = Query(20, ge=0, le=500), league: str | None = LeagueParam) -> dict:
+    return engine(league).performance(recent)
 
 
 @app.get("/api/picks")
@@ -85,16 +98,17 @@ def picks(
     date: str | None = None,
     value_only: bool = False,
     limit: int = Query(10, ge=1, le=50),
+    league: str | None = LeagueParam,
 ) -> dict:
-    e = engine()
+    e = engine(league)
     if date is not None and date not in e.dates():
         raise HTTPException(status_code=404, detail="No hay partidos con cuotas ese día")
     return e.picks(date, min_prob, risk, combine, value_only, limit)
 
 
 @app.get("/api/ratings")
-def ratings() -> list[dict]:
-    return engine().ratings()
+def ratings(league: str | None = LeagueParam) -> list[dict]:
+    return engine(league).ratings()
 
 
 if WEB_DIR.exists():
