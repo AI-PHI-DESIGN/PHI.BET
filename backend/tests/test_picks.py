@@ -68,3 +68,12 @@ def test_invalid_arguments():
         picks.best_picks(CANDIDATES, 0.6, "extremo")
     with pytest.raises(ValueError):
         picks.best_picks(CANDIDATES, 0.6, "low", combine=4)
+
+
+def test_picks_without_odds_reports_next_match():
+    from app.data import Fixture, load_matches
+    from app.service import PredictionEngine
+
+    engine = PredictionEngine(load_matches(), [Fixture("f1", "2026-10-09", "Atlético Phi", "CF Epsilon")])
+    r = engine.picks(None, 0.6, "low")
+    assert r["date"] is None and r["picks"] == [] and r["next_match"] == "2026-10-09"

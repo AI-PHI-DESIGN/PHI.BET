@@ -67,6 +67,8 @@ class PredictionEngine:
         candidates = picks.candidate_selections(day, self.fixtures)
         return {
             "dates": dates,
+            # Primer partido pendiente (tenga cuotas o no): la web lo usa para explicar por qué no hay cuotas.
+            "next_match": min((f.date for f in self.fixtures.values()), default=None),
             "date": date,
             "min_prob": min_prob,
             "risk": risk,

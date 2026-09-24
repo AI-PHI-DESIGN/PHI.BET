@@ -452,7 +452,8 @@
       }
       if (!r.date) {
         document.getElementById('pk-title').textContent = 'Mejores cuotas';
-        document.getElementById('pk-list').innerHTML = '<div class="card empty">Ahora mismo no hay partidos con cuotas publicadas.</div>';
+        document.getElementById('pk-list').innerHTML = `<div class="card empty">Ahora mismo no hay partidos con cuotas publicadas en esta liga.${
+          r.next_match ? ` La próxima jornada empieza el <b>${fmtDay(r.next_match)}</b>; las casas suelen publicar las cuotas unos días antes y aparecerán aquí solas.` : ''}</div>`;
         return;
       }
       const h = r.historical;
