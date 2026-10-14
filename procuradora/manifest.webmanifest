@@ -1,0 +1,17 @@
+{
+  "name": "Mis Plazos",
+  "short_name": "Mis Plazos",
+  "description": "Agenda de plazos procesales: sube la notificación de LexNET y calcula el vencimiento en días hábiles.",
+  "lang": "es",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#E4E5F4",
+  "theme_color": "#2A2C66",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

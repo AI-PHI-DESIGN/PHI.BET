@@ -1,0 +1,1152 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Mis Plazos</title>
+<meta name="description" content="Agenda de plazos procesales para procuradores: sube la notificación de LexNET y calcula el vencimiento en días hábiles.">
+<meta name="theme-color" content="#2A2C66">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --page:#C5C7EA; --surf:#E4E5F4; --card:#EBECF8; --ink:#25264F; --muted:#585B8B; --soft:#8E91BE; --line:rgba(88,91,160,.14);
+  --deep1:#3A3D86; --deep2:#24255A; --deep3:#17183C; --on-deep:#F1F2FF; --on-deep-muted:#B4B7E6;
+  --acc:#5A5FE0; --acc2:#8F94F7; --red:#E8445F; --amber:#E8962A; --green:#1FA878; --gray:#8F92B8;
+  --sh-d:rgba(112,116,182,.42); --sh-l:rgba(255,255,255,.92);
+  --neu:9px 9px 20px var(--sh-d),-9px -9px 20px var(--sh-l);
+  --neu-sm:5px 5px 12px var(--sh-d),-5px -5px 12px var(--sh-l);
+  --neu-in:inset 4px 4px 10px var(--sh-d),inset -4px -4px 10px var(--sh-l);
+  --fab:linear-gradient(150deg,#F4F4FF,#D9DAF2); --fab-sh:8px 10px 22px rgba(80,84,160,.42),-6px -6px 16px rgba(255,255,255,.9),inset 0 2px 0 #fff;
+  --r:26px; color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --page:#0E0F25; --surf:#1A1B3B; --card:#212347; --ink:#ECEDFF; --muted:#A9ACDA; --soft:#7F82B5; --line:rgba(160,164,240,.14);
+  --deep1:#30327A; --deep2:#1C1D4A; --deep3:#121331; --sh-d:rgba(4,5,20,.62); --sh-l:rgba(92,96,180,.16); color-scheme:dark;
+  --red:#FF5C77; --amber:#F5A742; --green:#2CC48E;
+  --fab:linear-gradient(150deg,#34377A,#1B1C48); --fab-sh:0 10px 24px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.14);
+}}
+:root[data-theme="dark"]{
+  --page:#0E0F25; --surf:#1A1B3B; --card:#212347; --ink:#ECEDFF; --muted:#A9ACDA; --soft:#7F82B5; --line:rgba(160,164,240,.14);
+  --deep1:#30327A; --deep2:#1C1D4A; --deep3:#121331; --sh-d:rgba(4,5,20,.62); --sh-l:rgba(92,96,180,.16); color-scheme:dark;
+  --red:#FF5C77; --amber:#F5A742; --green:#2CC48E;
+  --fab:linear-gradient(150deg,#34377A,#1B1C48); --fab-sh:0 10px 24px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.14);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{font-size:17px}
+body{margin:0;font-family:Nunito,"Segoe UI",system-ui,-apple-system,sans-serif;color:var(--ink);background:var(--page);
+  background-image:radial-gradient(circle at 12% 40%,rgba(255,255,255,.22) 0 30%,transparent 30.2%);min-height:100dvh;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none;padding:0}
+svg{flex:none}
+.phone{max-width:460px;margin:0 auto;min-height:100dvh;background:var(--surf);position:relative;overflow:clip;display:flex;flex-direction:column}
+@media (min-width:560px){.phone{margin:28px auto;min-height:calc(100dvh - 56px);border-radius:46px;box-shadow:0 30px 70px rgba(40,42,110,.28),0 0 0 10px rgba(255,255,255,.35)}}
+main{flex:1}
+
+/* ---------- parte oscura (cabecera) con la curva ---------- */
+.hero{position:relative;background:linear-gradient(165deg,var(--deep1) 0%,var(--deep2) 55%,var(--deep3) 100%);color:var(--on-deep);
+  padding:calc(env(safe-area-inset-top) + 14px) 22px 76px}
+.hero.compact{padding-bottom:62px}
+.wave{position:absolute;left:0;right:0;bottom:-1px;width:100%;height:64px;display:block}
+.wave path{fill:var(--surf)}
+.wave-up{display:block;width:100%;height:58px;margin-top:10px;margin-bottom:-1px}
+.wave-up path{fill:var(--deep2)}
+.topbar{display:grid;grid-template-columns:52px 1fr 52px;align-items:center;height:56px}
+.ibtn{width:48px;height:48px;border-radius:16px;display:grid;place-items:center;color:var(--on-deep)}
+.ibtn:active{background:rgba(255,255,255,.08)}
+.notch{justify-self:center;width:58px;height:58px;border-radius:50%;display:grid;place-items:center;
+  background:linear-gradient(150deg,rgba(255,255,255,.14),rgba(255,255,255,.02));box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 8px 18px rgba(0,0,0,.28)}
+.tb-title{justify-self:center;font-weight:800;font-size:1.05rem;text-align:center;line-height:1.2}
+.hello{margin:14px 2px 0;font-size:.95rem;color:var(--on-deep-muted);font-weight:700}
+.hello b{display:block;color:var(--on-deep);font-size:1.6rem;font-weight:900;letter-spacing:-.01em;margin-top:2px}
+.search{margin:16px 0 0;display:flex;align-items:center;gap:10px;height:50px;padding:0 18px;border-radius:25px;
+  background:rgba(8,9,30,.32);box-shadow:inset 2px 2px 6px rgba(0,0,0,.35),inset -1px -1px 0 rgba(255,255,255,.08);color:var(--on-deep-muted)}
+.search input{flex:1;border:0;outline:0;background:none;color:var(--on-deep);font-weight:600;min-width:0}
+.search input::placeholder{color:var(--on-deep-muted)}
+.glass{margin-top:18px;border-radius:28px;padding:20px;position:relative;
+  background:linear-gradient(150deg,rgba(255,255,255,.13),rgba(255,255,255,.03));border:1px solid rgba(255,255,255,.14);
+  box-shadow:0 16px 32px rgba(5,6,30,.35),inset 0 1px 0 rgba(255,255,255,.12)}
+.glass .row{display:flex;gap:14px;align-items:center}
+.gicon{width:58px;height:58px;border-radius:18px;display:grid;place-items:center;background:linear-gradient(150deg,#1F2050,#121331);box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 6px 14px rgba(0,0,0,.3)}
+.glass h2{margin:0;font-size:1.75rem;font-weight:900;letter-spacing:-.01em}
+.glass p{margin:2px 0 0;color:var(--on-deep-muted);font-weight:700;font-size:.92rem}
+.gbar{margin-top:18px;height:9px;border-radius:9px;background:rgba(0,0,0,.35);overflow:hidden}
+.gbar i{display:block;height:100%;border-radius:9px;background:linear-gradient(90deg,#6E73FF,#A3A7FF);box-shadow:0 0 12px rgba(130,135,255,.8)}
+.gcap{text-align:right;margin-top:8px;font-size:.8rem;color:var(--on-deep-muted);font-weight:700}
+
+/* ---------- parte clara ---------- */
+.sec{padding:6px 22px 18px}
+.sec-h{display:flex;align-items:center;justify-content:space-between;margin:18px 2px 12px;color:var(--muted);font-weight:800;font-size:.95rem}
+.sec-h .dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:8px;vertical-align:1px}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:4px}
+.tile{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}
+.tile .tb{width:100%;aspect-ratio:1;max-width:96px;border-radius:28px;display:grid;place-items:center;background:var(--card);box-shadow:var(--neu);transition:box-shadow .2s,transform .2s;position:relative}
+.tile.on .tb{box-shadow:var(--neu-in)}
+.tile:active .tb{transform:scale(.97)}
+.tile .tl{font-weight:800;font-size:.98rem;line-height:1.1}
+.tile .ts{color:var(--soft);font-weight:700;font-size:.8rem;margin-top:-6px}
+.cnt{position:absolute;top:-6px;right:-6px;min-width:28px;height:28px;padding:0 7px;border-radius:14px;color:#fff;font-weight:900;font-size:.85rem;display:grid;place-items:center;box-shadow:0 4px 10px rgba(0,0,0,.18)}
+
+.pcard{width:100%;display:flex;align-items:center;gap:14px;text-align:left;padding:14px 14px 14px 14px;margin-bottom:16px;border-radius:var(--r);background:var(--card);box-shadow:var(--neu-sm)}
+.pcard:active{box-shadow:var(--neu-in)}
+.badge{width:60px;height:60px;border-radius:20px;flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;line-height:1}
+.badge b{font-size:1.45rem;font-weight:900}
+.badge span{font-size:.68rem;font-weight:800;opacity:.92;margin-top:3px;text-transform:uppercase;letter-spacing:.04em}
+.b-vencido,.b-gracia,.b-hoy{background:linear-gradient(150deg,#FF8297,#E23A5A);box-shadow:0 8px 16px rgba(226,58,90,.32)}
+.b-pronto{background:linear-gradient(150deg,#FFC069,#EC8A1C);box-shadow:0 8px 16px rgba(236,138,28,.3)}
+.b-tiempo{background:linear-gradient(150deg,#55E0AE,#159C70);box-shadow:0 8px 16px rgba(21,156,112,.28)}
+.b-hecho{background:linear-gradient(150deg,#B6B9DD,#8A8DB8)}
+.pc-main{flex:1;min-width:0}
+.pc-t{font-weight:900;font-size:1.05rem;line-height:1.2}
+.pc-s{color:var(--muted);font-weight:700;font-size:.86rem;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc-v{font-weight:800;font-size:.86rem;margin-top:5px}
+.t-vencido,.t-gracia,.t-hoy{color:var(--red)} .t-pronto{color:var(--amber)} .t-tiempo{color:var(--green)} .t-hecho{color:var(--soft)}
+.chev{color:var(--soft)}
+.pcard.hecho .pc-t{text-decoration:line-through;text-decoration-thickness:2px;opacity:.6}
+
+.empty{text-align:center;padding:26px 16px 10px;color:var(--muted);font-weight:700}
+.empty h3{color:var(--ink);font-size:1.25rem;margin:14px 0 6px;font-weight:900}
+.linkbtn{display:block;margin:6px auto 0;padding:12px 18px;color:var(--acc);font-weight:800}
+
+/* ---------- barra inferior con el botón central ---------- */
+#navwrap{position:sticky;bottom:0;z-index:30}
+.nav{display:grid;grid-template-columns:1fr 132px 1fr;height:calc(78px + env(safe-area-inset-bottom));margin-top:auto;filter:drop-shadow(0 -6px 14px var(--sh-d))}
+.nav .side{background:var(--card);display:flex;align-items:flex-start;justify-content:center;padding-top:12px}
+.nav .side.l{border-top-left-radius:30px}.nav .side.r{border-top-right-radius:30px}
+.nav .mid{position:relative}
+.nav .mid svg.cut{position:absolute;inset:0 0 auto 0;width:132px;height:100%}
+.nav .mid svg.cut path{fill:var(--card)}
+.nav.dark .side{background:var(--deep3)} .nav.dark .mid svg.cut path{fill:var(--deep3)}
+.nav.dark{filter:drop-shadow(0 -6px 14px rgba(0,0,0,.35))}
+.navb{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--soft);font-weight:800;font-size:.75rem;min-width:72px;padding:4px}
+.navb.on{color:var(--acc)} .nav.dark .navb{color:#7D80B8} .nav.dark .navb.on{color:#C9CBFF}
+.navb .pip{width:5px;height:5px;border-radius:50%;background:currentColor;opacity:0}.navb.on .pip{opacity:1}
+.fab{position:absolute;left:50%;top:-30px;transform:translateX(-50%);width:76px;height:76px;border-radius:50%;display:grid;place-items:center;
+  background:var(--fab);box-shadow:var(--fab-sh)}
+.nav.dark .fab{background:linear-gradient(150deg,#2B2D66,#17183C);box-shadow:0 10px 24px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.12)}
+.fab:active{transform:translateX(-50%) scale(.95)}
+.fab-l{position:absolute;left:0;right:0;top:50px;text-align:center;font-weight:900;font-size:.78rem;color:var(--acc)}
+.nav.dark .fab-l{color:#C9CBFF}
+
+/* ---------- formularios ---------- */
+.card{background:var(--card);border-radius:var(--r);box-shadow:var(--neu-sm);padding:18px;margin-bottom:18px}
+.card h3{margin:0 0 4px;font-size:1.12rem;font-weight:900}
+.card .sub{margin:0 0 12px;color:var(--muted);font-weight:600;font-size:.9rem;line-height:1.4}
+.step{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;margin-right:8px;color:#fff;font-weight:900;font-size:.9rem;background:linear-gradient(150deg,var(--acc2),var(--acc));vertical-align:2px}
+label.lb{display:block;font-weight:800;font-size:.92rem;margin:14px 2px 7px}
+label.lb small{display:block;color:var(--muted);font-weight:600;font-size:.82rem;margin-top:2px}
+.inp{width:100%;height:54px;border:0;outline:0;border-radius:18px;padding:0 16px;background:var(--surf);box-shadow:var(--neu-in);font-weight:700;font-size:1rem}
+textarea.inp{height:auto;min-height:96px;padding:14px 16px;line-height:1.45;resize:vertical}
+select.inp{appearance:none;-webkit-appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 22px) 24px,calc(100% - 16px) 24px;background-size:6px 6px;background-repeat:no-repeat}
+.inp:focus{box-shadow:var(--neu-in),0 0 0 3px rgba(90,95,224,.35)}
+.seg{display:flex;padding:5px;border-radius:20px;background:var(--surf);box-shadow:var(--neu-in);gap:4px}
+.seg button{flex:1;min-height:46px;border-radius:15px;font-weight:800;color:var(--muted);font-size:.92rem;padding:0 6px}
+.seg button.on{background:var(--card);color:var(--acc);box-shadow:var(--neu-sm)}
+.stepper{display:flex;align-items:center;gap:12px}
+.stepper .rb{width:54px;height:54px;border-radius:18px;background:var(--card);box-shadow:var(--neu-sm);display:grid;place-items:center;color:var(--acc);font-size:1.6rem;font-weight:900}
+.stepper .rb:active{box-shadow:var(--neu-in)}
+.stepper .inp{text-align:center;font-size:1.5rem;font-weight:900;width:96px;flex:none}
+.chips{display:flex;flex-wrap:wrap;gap:9px}
+.chip{padding:10px 14px;border-radius:16px;background:var(--card);box-shadow:var(--neu-sm);font-weight:800;font-size:.86rem;line-height:1.2;text-align:left}
+.chip small{display:block;color:var(--muted);font-weight:700;font-size:.76rem}
+.chip.on{box-shadow:var(--neu-in);color:var(--acc)}
+.switch{display:flex;align-items:center;gap:14px;padding:6px 2px;text-align:left;width:100%}
+.switch .tog{width:58px;height:34px;border-radius:17px;background:var(--surf);box-shadow:var(--neu-in);position:relative;flex:none;transition:background .2s}
+.switch .tog::after{content:"";position:absolute;top:4px;left:4px;width:26px;height:26px;border-radius:50%;background:var(--card);box-shadow:2px 2px 6px var(--sh-d);transition:transform .2s}
+.switch.on .tog{background:linear-gradient(90deg,var(--acc),var(--acc2))}
+.switch.on .tog::after{transform:translateX(24px);background:#fff}
+.switch b{display:block;font-weight:800}
+.switch small{color:var(--muted);font-weight:600;font-size:.82rem;line-height:1.35;display:block}
+
+.drop{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;padding:22px 16px;border-radius:24px;background:var(--surf);box-shadow:var(--neu-in);width:100%;position:relative}
+.drop b{font-size:1.05rem;font-weight:900}
+.drop small{color:var(--muted);font-weight:700}
+.drop input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.found{margin-top:14px;padding:14px 16px;border-radius:18px;background:rgba(31,168,120,.12);color:var(--ink);font-weight:600;font-size:.9rem;line-height:1.45}
+.found b{color:var(--green)}
+.found q{quotes:none;display:block;margin-top:6px;font-style:italic;color:var(--muted)}
+.warn{padding:14px 16px;border-radius:18px;background:rgba(232,150,42,.14);font-weight:700;font-size:.88rem;line-height:1.45}
+.warn b{color:var(--amber)}
+.err{background:rgba(232,68,95,.12)}
+.err b{color:var(--red)}
+
+.btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:58px;border-radius:20px;font-weight:900;font-size:1.05rem;color:#fff;
+  background:linear-gradient(150deg,#6C71F0,#3E42B8);box-shadow:0 12px 24px rgba(70,74,200,.38),inset 0 1px 0 rgba(255,255,255,.25)}
+.btn:active{transform:scale(.98)}
+.btn.green{background:linear-gradient(150deg,#46D7A2,#139769);box-shadow:0 12px 24px rgba(19,151,105,.32)}
+.btn.soft{background:var(--card);color:var(--ink);box-shadow:var(--neu-sm)}
+.btn.soft:active{box-shadow:var(--neu-in)}
+.btn.danger{background:none;box-shadow:none;color:var(--red);min-height:48px;font-size:.95rem}
+.btn+.btn{margin-top:14px}
+
+/* ---------- resultado del cálculo ---------- */
+.result{border-radius:28px;padding:20px;color:var(--on-deep);background:linear-gradient(160deg,var(--deep1),var(--deep3));box-shadow:0 18px 32px rgba(30,32,90,.35);margin-bottom:18px}
+.result .k{font-size:.78rem;font-weight:900;letter-spacing:.12em;color:var(--on-deep-muted);text-transform:uppercase}
+.result .big{font-size:1.65rem;font-weight:900;line-height:1.15;margin:4px 0 6px}
+.result .g{color:var(--on-deep-muted);font-weight:700;font-size:.9rem;line-height:1.4}
+.result .g b{color:#fff}
+.result details{margin-top:14px;border-top:1px solid rgba(255,255,255,.12);padding-top:10px}
+.result summary{cursor:pointer;font-weight:800;color:#C9CBFF;list-style:none;display:flex;align-items:center;gap:8px;min-height:40px}
+.result summary::-webkit-details-marker{display:none}
+.tl{margin:10px 0 0;padding:0;list-style:none;position:relative}
+.tl li{position:relative;padding:0 0 12px 30px;font-weight:700;font-size:.9rem;line-height:1.35}
+.tl li::before{content:"";position:absolute;left:7px;top:6px;width:10px;height:10px;border-radius:50%;background:#8F94F7}
+.tl li::after{content:"";position:absolute;left:11px;top:18px;bottom:-2px;width:2px;background:rgba(255,255,255,.12)}
+.tl li:last-child::after{display:none}
+.tl li.salto{color:var(--on-deep-muted)} .tl li.salto::before{background:transparent;border:2px dashed #7D80B8}
+.tl li.vence::before{background:#FF8297;box-shadow:0 0 0 4px rgba(255,130,151,.25)}
+.tl li.gracia::before{background:#FFC069}
+.tl small{display:block;color:var(--on-deep-muted);font-weight:600}
+.cmp{margin-top:12px;padding:12px 14px;border-radius:16px;background:rgba(255,192,105,.14);color:#FFE2B8;font-weight:700;font-size:.86rem;line-height:1.45}
+
+/* ---------- ficha de un plazo ---------- */
+.count{display:inline-flex;align-items:center;gap:8px;margin-top:14px;padding:9px 16px;border-radius:20px;font-weight:900;font-size:.95rem;color:#fff}
+.count.c-tiempo{background:rgba(31,168,120,.85)} .count.c-pronto{background:rgba(236,138,28,.9)} .count.c-hoy,.count.c-gracia,.count.c-vencido{background:rgba(232,58,90,.9)} .count.c-hecho{background:rgba(255,255,255,.18)}
+.d-title{font-size:1.55rem;font-weight:900;line-height:1.2;margin:10px 0 0}
+.d-when{margin-top:8px;color:var(--on-deep-muted);font-weight:700;line-height:1.4}
+.d-when b{color:#fff}
+.acts{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:4px 0 22px}
+.act{display:flex;flex-direction:column;align-items:center;gap:8px;font-weight:800;font-size:.78rem;text-align:center;line-height:1.15}
+.act .ab{width:100%;aspect-ratio:1;max-width:72px;border-radius:22px;background:var(--card);box-shadow:var(--neu-sm);display:grid;place-items:center}
+.act:active .ab{box-shadow:var(--neu-in)}
+.dl{display:grid;grid-template-columns:auto 1fr;gap:10px 14px;margin:0;font-size:.95rem}
+.dl dt{color:var(--muted);font-weight:700}
+.dl dd{margin:0;font-weight:800;word-break:break-word}
+
+/* ---------- calendario ---------- */
+.mhead{display:flex;align-items:center;justify-content:space-between;margin:4px 0 14px}
+.mhead h2{margin:0;font-size:1.35rem;font-weight:900}
+.rbtn{width:48px;height:48px;border-radius:16px;background:var(--card);box-shadow:var(--neu-sm);display:grid;place-items:center;color:var(--acc)}
+.rbtn:active{box-shadow:var(--neu-in)}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;text-align:center}
+.grid .wd{font-size:.75rem;font-weight:900;color:var(--soft);padding-bottom:4px}
+.day{aspect-ratio:1;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;font-size:.95rem;position:relative}
+.day.inh{color:var(--soft);background:repeating-linear-gradient(135deg,transparent 0 5px,var(--line) 5px 7px)}
+.day.today{box-shadow:inset 0 0 0 2px var(--acc)}
+.day.sel{background:linear-gradient(150deg,#6C71F0,#3E42B8);color:#fff;box-shadow:0 8px 16px rgba(70,74,200,.35)}
+.day .dots{display:flex;gap:3px;position:absolute;bottom:5px}
+.day .dots i{width:6px;height:6px;border-radius:50%}
+.legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin:14px 2px 0;color:var(--muted);font-weight:700;font-size:.8rem}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:10px;height:10px;border-radius:50%;display:inline-block}
+.legend .hatch{width:16px;height:12px;border-radius:4px;background:repeating-linear-gradient(135deg,transparent 0 3px,var(--soft) 3px 4px)}
+.dark-sec{background:var(--deep2);color:var(--on-deep);padding:4px 0 26px;position:relative;flex:1}
+.pills{display:flex;gap:12px;overflow-x:auto;padding:18px 22px 18px;scroll-snap-type:x mandatory;scrollbar-width:none}
+.pills::-webkit-scrollbar{display:none}
+.pill{flex:none;width:62px;height:96px;border-radius:31px;scroll-snap-align:center;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:16px;gap:2px;
+  background:linear-gradient(180deg,#3F42A0,#2A2C70);color:#E2E3FF;font-weight:900;font-size:1.25rem;box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 8px 16px rgba(0,0,0,.25);position:relative}
+.pill small{font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;font-weight:900;opacity:.85}
+.pill.inh{background:linear-gradient(180deg,#26285E,#1E1F4C);color:#8285BE}
+.pill.sel{height:112px;margin-top:-8px;background:linear-gradient(180deg,#B9BCFF,#7C80E6);color:#1B1C48;box-shadow:0 0 0 3px rgba(185,188,255,.35),0 12px 22px rgba(0,0,0,.35)}
+.pill .pd{position:absolute;top:14px;width:9px;height:9px;border-radius:50%}
+.dsec{padding:0 22px}
+.dsec h3{margin:6px 0 4px;font-size:1.15rem;font-weight:900}
+.dsec .why{color:var(--on-deep-muted);font-weight:700;font-size:.88rem;margin-bottom:14px}
+.dcard{width:100%;display:flex;gap:14px;align-items:center;text-align:left;padding:14px;border-radius:22px;margin-bottom:12px;color:var(--on-deep);
+  background:linear-gradient(150deg,rgba(255,255,255,.1),rgba(255,255,255,.03));border:1px solid rgba(255,255,255,.1)}
+.dcard .pc-s{color:var(--on-deep-muted)}
+
+/* ---------- listas sencillas ---------- */
+.li{display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:14px;border-radius:22px;background:var(--card);box-shadow:var(--neu-sm);margin-bottom:14px}
+.li:active{box-shadow:var(--neu-in)}
+.av{width:52px;height:52px;border-radius:18px;display:grid;place-items:center;color:#fff;font-weight:900;font-size:1.1rem;flex:none}
+.li .t{font-weight:900}
+.li .s{color:var(--muted);font-weight:700;font-size:.85rem;margin-top:2px;word-break:break-word}
+.fest{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 2px;border-bottom:1px solid var(--line);font-weight:700}
+.fest:last-child{border-bottom:0}
+.fest span{color:var(--muted);font-weight:700;font-size:.88rem}
+.x{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;color:var(--red)}
+.help p,.help li{line-height:1.55;font-weight:600}
+.help ul{padding-left:20px;margin:8px 0}
+
+/* ---------- menú lateral, hojas y avisos ---------- */
+.backdrop{position:fixed;inset:0;background:rgba(14,15,40,.45);backdrop-filter:blur(3px);z-index:50;animation:fade .2s}
+.drawer{position:fixed;top:0;bottom:0;left:0;width:min(330px,86vw);z-index:51;background:var(--surf);padding:calc(env(safe-area-inset-top) + 18px) 18px 18px;overflow-y:auto;animation:slide .25s;border-radius:0 34px 34px 0;box-shadow:20px 0 40px rgba(14,15,40,.3)}
+.drawer .brand{display:flex;align-items:center;gap:12px;margin:4px 6px 22px}
+.drawer .brand b{font-size:1.3rem;font-weight:900;display:block}
+.drawer .brand small{color:var(--muted);font-weight:700}
+.mi{display:flex;align-items:center;gap:14px;width:100%;padding:10px;border-radius:18px;font-weight:800;text-align:left;min-height:58px}
+.mi .mb{width:44px;height:44px;border-radius:15px;background:var(--card);box-shadow:var(--neu-sm);display:grid;place-items:center}
+.mi:active{background:var(--card)}
+.ver{margin:18px 10px 0;color:var(--soft);font-weight:700;font-size:.8rem}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:51;max-width:460px;margin:0 auto;max-height:90dvh;overflow-y:auto;background:var(--surf);border-radius:32px 32px 0 0;padding:12px 22px calc(env(safe-area-inset-bottom) + 22px);animation:up .25s;box-shadow:0 -20px 40px rgba(14,15,40,.3)}
+.sclose{position:absolute;top:14px;right:16px;width:44px;height:44px;border-radius:15px;display:grid;place-items:center;background:var(--card);box-shadow:var(--neu-sm);color:var(--muted)}
+.sheet h3{padding-right:52px}
+.sheet .grab{width:48px;height:5px;border-radius:3px;background:var(--soft);opacity:.5;margin:0 auto 14px}
+.sheet h3{margin:0 0 6px;font-size:1.3rem;font-weight:900}
+.sheet p{color:var(--muted);font-weight:600;line-height:1.45;margin:0 0 14px}
+.row2{display:flex;gap:12px}.row2>*{flex:1}
+#toast{position:fixed;left:50%;bottom:calc(110px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);opacity:0;pointer-events:none;z-index:60;background:var(--deep2);color:#fff;font-weight:800;padding:14px 22px;border-radius:20px;box-shadow:0 12px 26px rgba(0,0,0,.3);transition:.25s;max-width:88vw;text-align:center}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.spin{width:22px;height:22px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--acc);animation:rot .8s linear infinite;display:inline-block}
+@keyframes rot{to{transform:rotate(360deg)}}
+@keyframes fade{from{opacity:0}}
+@keyframes slide{from{transform:translateX(-100%)}}
+@keyframes up{from{transform:translateY(100%)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="gPink" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF8AD0"/><stop offset="1" stop-color="#8E5BF5"/></linearGradient>
+    <linearGradient id="gOrange" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFC56B"/><stop offset="1" stop-color="#FF8A1F"/></linearGradient>
+    <linearGradient id="gRed" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF8F9F"/><stop offset="1" stop-color="#E5335A"/></linearGradient>
+    <linearGradient id="gBlue" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#63D3FF"/><stop offset="1" stop-color="#4A55E6"/></linearGradient>
+    <linearGradient id="gGreen" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6FF0BE"/><stop offset="1" stop-color="#11A177"/></linearGradient>
+    <linearGradient id="gViolet" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#B8A4FF"/><stop offset="1" stop-color="#5A4FE0"/></linearGradient>
+    <linearGradient id="gTeal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7DF1E1"/><stop offset="1" stop-color="#1A9FB8"/></linearGradient>
+  </defs>
+</svg>
+<div class="phone"><main id="app"></main><div id="navwrap"></div></div>
+<div id="ov"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<script>
+'use strict';
+const VERSION = 'v1.0';
+// Dirección pública de la app instalable (GitHub Pages). Si cambia el repositorio, cambiar aquí.
+const APP_URL = 'https://ai-phi-design.github.io/PHI.BET/procuradora/';
+
+/* ---------- utilidades ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+let toastT;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 2600); }
+
+/* ---------- fechas: siempre 'AAAA-MM-DD' y cálculos en UTC (sin saltos por cambio de hora) ---------- */
+const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+const DIAS_C = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+const MESES_C = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+const pad = n => String(n).padStart(2, '0');
+const toD = s => { const [y, m, d] = s.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d)); };
+const fromD = dt => dt.toISOString().slice(0, 10);
+const addDias = (s, n) => fromD(new Date(toD(s).getTime() + n * 864e5));
+const hoy = () => { const n = new Date(); return `${n.getFullYear()}-${pad(n.getMonth() + 1)}-${pad(n.getDate())}`; };
+const partes = s => { const d = toD(s); return { y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, d: d.getUTCDate(), w: d.getUTCDay() }; };
+const fLarga = s => { const p = partes(s); return `${DIAS[p.w]}, ${p.d} de ${MESES[p.m - 1]}`; };
+const fLargaY = s => { const p = partes(s); return `${DIAS[p.w]}, ${p.d} de ${MESES[p.m - 1]} de ${p.y}`; };
+const fCorta = s => { const p = partes(s); return `${DIAS_C[p.w]} ${p.d} ${MESES_C[p.m - 1]}`; };
+const fNum = s => { const p = partes(s); return `${pad(p.d)}/${pad(p.m)}/${p.y}`; };
+const may = s => s.charAt(0).toUpperCase() + s.slice(1);
+const validFecha = s => /^\d{4}-\d{2}-\d{2}$/.test(s || '') && !isNaN(toD(s));
+
+/* ---------- días inhábiles ---------- */
+// Domingo de Pascua (algoritmo anónimo gregoriano)
+function pascua(y) {
+  const a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const mes = Math.floor((h + l - 7 * m + 114) / 31), dia = ((h + l - 7 * m + 114) % 31) + 1;
+  return `${y}-${pad(mes)}-${pad(dia)}`;
+}
+// Festivos nacionales comunes a toda España
+function nacionales(y) {
+  return [[`${y}-01-01`, 'Año Nuevo'], [`${y}-01-06`, 'Reyes'], [addDias(pascua(y), -2), 'Viernes Santo'], [`${y}-05-01`, 'Fiesta del Trabajo'],
+    [`${y}-08-15`, 'Asunción de la Virgen'], [`${y}-10-12`, 'Fiesta Nacional de España'], [`${y}-11-01`, 'Todos los Santos'],
+    [`${y}-12-06`, 'Día de la Constitución'], [`${y}-12-08`, 'Inmaculada Concepción'], [`${y}-12-25`, 'Navidad']];
+}
+const cacheNac = {};
+const nacionalDe = s => { const y = s.slice(0, 4); if (!cacheNac[y]) cacheNac[y] = new Map(nacionales(+y)); return cacheNac[y].get(s); };
+// Devuelve por qué un día es inhábil ('' si es hábil).
+// urgente = asunto en el que agosto y del 24 dic al 6 ene sí cuentan (art. 183 LOPJ, salvo urgentes).
+function inhabil(s, urgente) {
+  const p = partes(s);
+  if (!urgente && p.m === 8) return 'agosto';
+  if (!urgente && ((p.m === 12 && p.d >= 24) || (p.m === 1 && p.d <= 6))) return 'Navidad (24 dic – 6 ene)';
+  if (p.m === 12 && (p.d === 24 || p.d === 31)) return p.d + ' de diciembre';
+  if (p.w === 6 || p.w === 0) return 'fin de semana';
+  const n = nacionalDe(s); if (n) return n;
+  const f = S.festivos.find(x => x.fecha === s); if (f) return f.nombre || 'festivo';
+  return '';
+}
+const sigHabil = (s, urg, seq) => { let d = addDias(s, 1); while (inhabil(d, urg)) { if (seq) seq.push({ k: 'salto', fecha: d, motivo: inhabil(d, urg) }); d = addDias(d, 1); } return d; };
+const habilesEntre = (a, b, urg) => { let n = 0, d = a; while (d < b) { d = addDias(d, 1); if (!inhabil(d, urg)) n++; } return n; };
+
+/* ---------- el cálculo del plazo ----------
+   1. Recepción en LexNET. Si llega después de las 15:00 o en día inhábil, cuenta como recibida el día hábil siguiente.
+   2. Se entiende notificada el día hábil siguiente a la recepción (art. 151.2 LEC).
+   3. El plazo empieza al día siguiente de la notificación (art. 133.1 LEC).
+      · Por días: se cuentan solo los hábiles (art. 133.2 LEC; agosto y 24 dic – 6 ene inhábiles, art. 183 LOPJ).
+      · Por meses: de fecha a fecha (art. 133.3 LEC); si acaba en inhábil, pasa al siguiente hábil.
+   4. Día de gracia: se puede presentar hasta las 15:00 del día hábil siguiente al vencimiento (art. 135.5 LEC). */
+function calcular(p) {
+  const urg = !!p.urgente, seq = [];
+  const cant = Math.max(1, Math.floor(Number(p.cantidad) || 0));
+  if (!validFecha(p.recepcion)) return null;
+  seq.push({ k: 'rec', fecha: p.recepcion, tarde: p.hora === 'despues' });
+  let rec = p.recepcion;
+  if (inhabil(rec, urg) || p.hora === 'despues') {
+    if (inhabil(rec, urg)) seq.push({ k: 'salto', fecha: rec, motivo: inhabil(rec, urg) });
+    rec = sigHabil(rec, urg, seq);
+    seq.push({ k: 'recEf', fecha: rec, porHora: p.hora === 'despues' && !inhabil(p.recepcion, urg) });
+  }
+  const notificada = sigHabil(rec, urg, seq);
+  seq.push({ k: 'not', fecha: notificada });
+  let vence;
+  if (p.unidad === 'meses') {
+    const q = partes(notificada);
+    const mesFin = new Date(Date.UTC(q.y, q.m - 1 + cant + 1, 0)).getUTCDate();
+    const t = new Date(Date.UTC(q.y, q.m - 1 + cant, Math.min(q.d, mesFin)));
+    vence = fromD(t);
+    seq.push({ k: 'mes', fecha: vence, n: cant });
+    while (inhabil(vence, urg)) { seq.push({ k: 'salto', fecha: vence, motivo: inhabil(vence, urg) }); vence = addDias(vence, 1); }
+  } else {
+    let d = notificada, n = 0;
+    while (n < cant) { d = addDias(d, 1); const m = inhabil(d, urg); if (m) seq.push({ k: 'salto', fecha: d, motivo: m }); else { n++; seq.push({ k: 'dia', fecha: d, n }); } }
+    vence = d;
+  }
+  const gracia = sigHabil(vence, urg);
+  seq.push({ k: 'vence', fecha: vence }, { k: 'gracia', fecha: gracia });
+  const saltaVacaciones = seq.some(x => x.k === 'salto' && (x.motivo === 'agosto' || x.motivo.startsWith('Navidad')));
+  return { recibida: rec, notificada, vence, gracia, seq, cant, saltaVacaciones };
+}
+// Agrupa el paso a paso para enseñarlo sin una lista de 20 líneas
+function agrupar(seq) {
+  const out = [];
+  for (const x of seq) {
+    const last = out[out.length - 1];
+    if (x.k === 'dia' && last && last.k === 'dias' && addDias(last.hasta, 1) === x.fecha) { last.hasta = x.fecha; last.n2 = x.n; continue; }
+    if (x.k === 'dia') { out.push({ k: 'dias', desde: x.fecha, hasta: x.fecha, n1: x.n, n2: x.n }); continue; }
+    if (x.k === 'salto' && last && last.k === 'saltos' && last.motivo === x.motivo && addDias(last.hasta, 1) === x.fecha) { last.hasta = x.fecha; continue; }
+    if (x.k === 'salto') { out.push({ k: 'saltos', desde: x.fecha, hasta: x.fecha, motivo: x.motivo }); continue; }
+    out.push(x);
+  }
+  return out;
+}
+const rango = (a, b) => a === b ? fCorta(a) : `${fCorta(a)} – ${fCorta(b)}`;
+function pasosHTML(c, p) {
+  return `<ol class="tl">${agrupar(c.seq).map(x => {
+    switch (x.k) {
+      case 'rec': return `<li>Llega a LexNET: <b>${fCorta(x.fecha)}</b>${x.tarde ? ' (después de las 15:00)' : ''}</li>`;
+      case 'recEf': return `<li>Cuenta como recibida: <b>${fCorta(x.fecha)}</b><small>${x.porHora ? 'Llegó después de las 15:00' : 'Llegó en día inhábil'}</small></li>`;
+      case 'not': return `<li>Se entiende notificada: <b>${fCorta(x.fecha)}</b><small>Día hábil siguiente a la recepción</small></li>`;
+      case 'dias': return `<li>${x.n1 === x.n2 ? `Día ${x.n1}` : `Días ${x.n1} a ${x.n2}`} del plazo: <b>${rango(x.desde, x.hasta)}</b></li>`;
+      case 'saltos': return `<li class="salto">No cuenta: ${rango(x.desde, x.hasta)}<small>${esc(x.motivo)}</small></li>`;
+      case 'mes': return `<li>${x.n} ${x.n === 1 ? 'mes' : 'meses'} de fecha a fecha: <b>${fCorta(x.fecha)}</b></li>`;
+      case 'vence': return `<li class="vence">Vence: <b>${fCorta(x.fecha)}</b></li>`;
+      case 'gracia': return `<li class="gracia">Aún se puede presentar hasta las 15:00 del <b>${fCorta(x.fecha)}</b><small>Día de gracia (art. 135.5 LEC)</small></li>`;
+    }
+    return '';
+  }).join('')}</ol>`;
+}
+
+/* ---------- estado de cada plazo ---------- */
+// vencido · gracia (hoy hasta 15:00) · hoy · pronto (≤ 3 días hábiles) · tiempo · hecho
+function estado(p, c) {
+  c = c || calcular(p); const t = hoy();
+  if (p.hecho) return { k: 'hecho', n: 0, c };
+  if (!c) return { k: 'tiempo', n: 0, c };
+  if (t > c.gracia) return { k: 'vencido', n: 0, c };
+  if (t > c.vence) return { k: 'gracia', n: 0, c };
+  if (t === c.vence) return { k: 'hoy', n: 0, c };
+  const n = habilesEntre(t, c.vence, p.urgente);
+  return { k: n <= 3 ? 'pronto' : 'tiempo', n, c };
+}
+const textoEstado = e => ({
+  hecho: 'Hecho', vencido: `Vencido el ${e.c ? fCorta(e.c.vence) : ''}`, gracia: 'Hoy hasta las 15:00 (día de gracia)', hoy: 'Vence HOY',
+  pronto: e.n === 1 ? 'Queda 1 día hábil' : `Quedan ${e.n} días hábiles`, tiempo: `Quedan ${e.n} días hábiles`
+})[e.k];
+const badgeHTML = e => {
+  const inner = { hecho: '<b>✓</b><span>hecho</span>', vencido: '<b>!</b><span>vencido</span>', gracia: '<b>15h</b><span>gracia</span>', hoy: '<b>HOY</b>' }[e.k]
+    || `<b>${e.n}</b><span>${e.n === 1 ? 'día' : 'días'}</span>`;
+  return `<div class="badge b-${e.k}">${inner}</div>`;
+};
+const COLOR = { vencido: 'var(--red)', gracia: 'var(--red)', hoy: 'var(--red)', pronto: 'var(--amber)', tiempo: 'var(--green)', hecho: 'var(--gray)' };
+
+/* ---------- almacenamiento en el propio móvil (IndexedDB) ---------- */
+const Store = (() => {
+  const hasIDB = typeof indexedDB !== 'undefined';
+  let dbp;
+  const open = () => dbp || (dbp = new Promise((res, rej) => {
+    const r = indexedDB.open('mis-plazos', 1);
+    r.onupgradeneeded = e => { const d = e.target.result; d.createObjectStore('plazos', { keyPath: 'id' }); d.createObjectStore('kv'); d.createObjectStore('pdfs'); };
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  }));
+  const tx = async (store, mode, fn) => { const d = await open(); return new Promise((res, rej) => { const t = d.transaction(store, mode); const q = fn(t.objectStore(store)); t.oncomplete = () => res(q && q.result); t.onerror = () => rej(t.error); }); };
+  const ls = { get: k => { try { return JSON.parse(localStorage.getItem('mp:' + k) || 'null'); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem('mp:' + k, JSON.stringify(v)); } catch { toast('No queda espacio para guardar'); } } };
+  if (!hasIDB) return {
+    all: async () => ls.get('plazos') || [], put: async p => { const a = (ls.get('plazos') || []).filter(x => x.id !== p.id); a.push(p); ls.set('plazos', a); },
+    del: async id => ls.set('plazos', (ls.get('plazos') || []).filter(x => x.id !== id)),
+    getKV: async k => ls.get(k), setKV: async (k, v) => ls.set(k, v), getPDF: async () => null, putPDF: async () => {}, delPDF: async () => {}
+  };
+  return {
+    all: () => tx('plazos', 'readonly', s => s.getAll()),
+    put: p => tx('plazos', 'readwrite', s => s.put(p)),
+    del: id => tx('plazos', 'readwrite', s => s.delete(id)),
+    getKV: k => tx('kv', 'readonly', s => s.get(k)),
+    setKV: (k, v) => tx('kv', 'readwrite', s => s.put(v, k)),
+    getPDF: id => tx('pdfs', 'readonly', s => s.get(id)),
+    putPDF: (id, v) => tx('pdfs', 'readwrite', s => s.put(v, id)),
+    delPDF: id => tx('pdfs', 'readwrite', s => s.delete(id))
+  };
+})();
+
+/* ---------- estado de la app ---------- */
+const S = { plazos: [], abogados: [], festivos: [], perfil: { nombre: '', firma: '' }, view: { name: 'home' }, filtro: null, query: '', verHechos: false, calMes: null, calDia: null, draft: null, festYear: null };
+let downloadsNS = null, swReg = null, recargando = false, installPrompt = null;
+const enArtefacto = () => !!window.claude; // la página se está viendo dentro del artefacto de claude.ai
+const findPlazo = id => S.plazos.find(p => p.id === id);
+const findAbogado = id => S.abogados.find(a => a.id === id);
+const savePlazo = async p => { p.updatedAt = Date.now(); const i = S.plazos.findIndex(x => x.id === p.id); if (i < 0) S.plazos.push(p); else S.plazos[i] = p; await Store.put(p); };
+const saveKV = k => Store.setKV(k, S[k]);
+
+// Plazos habituales de la LEC para rellenar con un toque (siempre se pueden cambiar)
+const ACCIONES = [['Recurso de reposición', 5], ['Recurso de revisión', 5], ['Recurso de apelación', 20], ['Contestar demanda (ordinario)', 20],
+  ['Contestar demanda (verbal)', 10], ['Oposición a la ejecución', 10], ['Impugnar tasación de costas', 10], ['Alegaciones / traslado', 5]];
+
+/* ---------- iconos ---------- */
+const I = {
+  menu: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h10"/></svg>',
+  back: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
+  chev: '<svg class="chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>',
+  left: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
+  right: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>',
+  search: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/></svg>',
+  home: '<svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.2l8.6 7.3c.5.4.2 1.2-.4 1.2H19v7.6c0 .6-.4 1-1 1h-3.6v-5.4h-4.8v5.4H6c-.6 0-1-.4-1-1v-7.6H3.8c-.6 0-.9-.8-.4-1.2L12 3.2z"/></svg>',
+  cal: '<svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M7 2.5c.6 0 1 .4 1 1V5h8V3.5c0-.6.4-1 1-1s1 .4 1 1V5h1a2.5 2.5 0 012.5 2.5v11A2.5 2.5 0 0119 21H5a2.5 2.5 0 01-2.5-2.5v-11A2.5 2.5 0 015 5h1V3.5c0-.6.4-1 1-1zM4.5 10v8.5c0 .3.2.5.5.5h14c.3 0 .5-.2.5-.5V10h-15zm3 2.5h3v3h-3v-3z"/></svg>',
+  plus: '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="url(#gViolet)" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  logo: (s = 30) => `<svg width="${s}" height="${s}" viewBox="0 0 32 32"><rect x="4" y="6" width="24" height="22" rx="6" fill="#fff"/><path d="M4 12a6 6 0 016-6h12a6 6 0 016 6v1H4z" fill="url(#gPink)"/><rect x="9" y="3" width="3" height="7" rx="1.5" fill="#C9CBFF"/><rect x="20" y="3" width="3" height="7" rx="1.5" fill="#C9CBFF"/><path d="M10.5 20.5l3.5 3.5 7.5-8" fill="none" stroke="#4A4FD6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  // iconos de color, al estilo de las baldosas
+  tHoy: '<svg width="46" height="46" viewBox="0 0 48 48"><circle cx="24" cy="26" r="16" fill="url(#gRed)"/><circle cx="24" cy="26" r="11.5" fill="#fff" opacity=".95"/><path d="M24 19v7.5l5 3" stroke="#E5335A" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M8 13l6-5M40 13l-6-5" stroke="url(#gRed)" stroke-width="4" stroke-linecap="round"/></svg>',
+  tPronto: '<svg width="46" height="46" viewBox="0 0 48 48"><rect x="7" y="10" width="34" height="30" rx="8" fill="#fff"/><path d="M7 18a8 8 0 018-8h18a8 8 0 018 8v2H7z" fill="url(#gOrange)"/><rect x="14" y="6" width="4" height="9" rx="2" fill="#FFB451"/><rect x="30" y="6" width="4" height="9" rx="2" fill="#FFB451"/><rect x="14" y="25" width="6" height="5" rx="2" fill="#FFC56B"/><rect x="22" y="25" width="6" height="5" rx="2" fill="#FF8A1F"/><rect x="14" y="32" width="6" height="4" rx="2" fill="#FFD9A3"/></svg>',
+  tTiempo: '<svg width="46" height="46" viewBox="0 0 48 48"><path d="M24 6l17 8.5L24 23 7 14.5z" fill="url(#gBlue)"/><path d="M7 22.5l17 8.5 17-8.5" fill="none" stroke="url(#gTeal)" stroke-width="4.5" stroke-linejoin="round" stroke-linecap="round"/><path d="M7 31l17 8.5L41 31" fill="none" stroke="url(#gViolet)" stroke-width="4.5" stroke-linejoin="round" stroke-linecap="round"/></svg>',
+  doc: (s = 34) => `<svg width="${s}" height="${s}" viewBox="0 0 48 48"><path d="M13 5h15l11 11v24a4 4 0 01-4 4H13a4 4 0 01-4-4V9a4 4 0 014-4z" fill="url(#gPink)"/><path d="M28 5v8a3 3 0 003 3h8z" fill="#FFC4EA"/><rect x="15" y="24" width="18" height="3.5" rx="1.75" fill="#fff"/><rect x="15" y="31" width="12" height="3.5" rx="1.75" fill="#fff" opacity=".85"/><rect x="5" y="22" width="12" height="16" rx="3" fill="#6E4AE8" opacity=".55"/></svg>`,
+  mail: '<svg width="32" height="32" viewBox="0 0 48 48"><rect x="5" y="10" width="38" height="28" rx="7" fill="url(#gBlue)"/><path d="M8 15l16 11 16-11" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  ics: '<svg width="32" height="32" viewBox="0 0 48 48"><rect x="7" y="10" width="34" height="30" rx="8" fill="#fff"/><path d="M7 18a8 8 0 018-8h18a8 8 0 018 8v2H7z" fill="url(#gOrange)"/><path d="M24 25v10M19 30h10" stroke="#FF8A1F" stroke-width="3.5" stroke-linecap="round"/></svg>',
+  edit: '<svg width="32" height="32" viewBox="0 0 48 48"><path d="M30 8l10 10-20 20H10V28z" fill="url(#gViolet)"/><path d="M27 11l10 10" stroke="#fff" stroke-width="3"/><rect x="9" y="40" width="30" height="3.5" rx="1.75" fill="#B8A4FF"/></svg>',
+  share: '<svg width="32" height="32" viewBox="0 0 48 48"><circle cx="34" cy="12" r="6" fill="url(#gGreen)"/><circle cx="14" cy="24" r="6" fill="url(#gTeal)"/><circle cx="34" cy="36" r="6" fill="url(#gGreen)"/><path d="M19 21l10-6M19 27l10 6" stroke="#1A9FB8" stroke-width="3.5" stroke-linecap="round"/></svg>',
+  people: '<svg width="28" height="28" viewBox="0 0 48 48"><circle cx="18" cy="16" r="8" fill="url(#gBlue)"/><path d="M4 40c0-8 6-13 14-13s14 5 14 13z" fill="url(#gBlue)"/><circle cx="34" cy="18" r="6" fill="url(#gPink)"/><path d="M28 30c2-1.5 4-2 6-2 6 0 10 4 10 11H32" fill="url(#gPink)"/></svg>',
+  flag: '<svg width="28" height="28" viewBox="0 0 48 48"><rect x="9" y="6" width="4" height="38" rx="2" fill="#8F92B8"/><path d="M13 8h24l-5 8 5 8H13z" fill="url(#gOrange)"/></svg>',
+  user: '<svg width="28" height="28" viewBox="0 0 48 48"><circle cx="24" cy="17" r="9" fill="url(#gViolet)"/><path d="M8 42c0-9 7-15 16-15s16 6 16 15z" fill="url(#gViolet)"/></svg>',
+  safe: '<svg width="28" height="28" viewBox="0 0 48 48"><path d="M24 4l16 6v12c0 10-7 18-16 22C15 40 8 32 8 22V10z" fill="url(#gGreen)"/><path d="M17 24l5 5 9-10" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  info: '<svg width="28" height="28" viewBox="0 0 48 48"><circle cx="24" cy="24" r="19" fill="url(#gTeal)"/><rect x="21.5" y="21" width="5" height="15" rx="2.5" fill="#fff"/><circle cx="24" cy="14.5" r="3" fill="#fff"/></svg>',
+  phone: '<svg width="28" height="28" viewBox="0 0 48 48"><rect x="13" y="4" width="22" height="40" rx="6" fill="url(#gPink)"/><rect x="17" y="10" width="14" height="24" rx="2" fill="#fff" opacity=".9"/><circle cx="24" cy="38.5" r="2" fill="#fff"/></svg>',
+  refresh: '<svg width="28" height="28" viewBox="0 0 48 48"><path d="M38 20a15 15 0 10-2 13" fill="none" stroke="url(#gBlue)" stroke-width="5" stroke-linecap="round"/><path d="M40 8v13H27z" fill="url(#gBlue)"/></svg>',
+  check: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  trash: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13"/></svg>',
+  upload: '<svg width="56" height="56" viewBox="0 0 48 48"><path d="M13 5h15l11 11v24a4 4 0 01-4 4H13a4 4 0 01-4-4V9a4 4 0 014-4z" fill="url(#gPink)"/><path d="M28 5v8a3 3 0 003 3h8z" fill="#FFC4EA"/><path d="M24 36V22M18 28l6-6 6 6" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  empty: '<svg width="150" height="120" viewBox="0 0 150 120"><ellipse cx="75" cy="108" rx="52" ry="7" fill="currentColor" opacity=".12"/><rect x="34" y="22" width="82" height="76" rx="20" fill="#fff" opacity=".9"/><path d="M34 44a20 20 0 0120-20h42a20 20 0 0120 20v4H34z" fill="url(#gPink)"/><rect x="52" y="12" width="9" height="22" rx="4.5" fill="#C9CBFF"/><rect x="89" y="12" width="9" height="22" rx="4.5" fill="#C9CBFF"/><path d="M58 72l11 11 23-25" fill="none" stroke="url(#gViolet)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="126" cy="30" r="8" fill="url(#gOrange)"/><circle cx="24" cy="66" r="6" fill="url(#gTeal)"/></svg>'
+};
+const waveSVG = (cls = '') => `<svg class="wave ${cls}" viewBox="0 0 400 64" preserveAspectRatio="none" aria-hidden="true"><path d="M0 0 C0 30 16 42 60 44 L330 48 C374 50 400 56 400 64 L0 64 Z"/></svg>`;
+const AV_GRAD = ['#FF8AD0,#8E5BF5', '#63D3FF,#4A55E6', '#6FF0BE,#11A177', '#FFC56B,#FF8A1F', '#B8A4FF,#5A4FE0', '#7DF1E1,#1A9FB8'];
+const avatar = (nombre, i) => `<div class="av" style="background:linear-gradient(150deg,${AV_GRAD[i % AV_GRAD.length]})">${esc((nombre || '?').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?')}</div>`;
+
+/* ---------- navegación con historial (botón atrás del móvil) ---------- */
+function go(view, replace) { closeOverlay(); S.view = view; if (replace) history.replaceState(view, ''); else history.pushState(view, ''); render(); window.scrollTo(0, 0); }
+window.addEventListener('popstate', e => { closeOverlay(); S.view = e.state || { name: 'home' }; render(); });
+const back = () => { if (history.state && history.state.name !== 'home' && history.length > 1) history.back(); else go({ name: 'home' }, true); };
+
+/* ---------- pantallas ---------- */
+function render() {
+  const v = S.view, app = $('#app');
+  const views = { home: vHome, nuevo: vNuevo, plazo: vPlazo, calendario: vCalendario, abogados: vAbogados, festivos: vFestivos, perfil: vPerfil, ayuda: vAyuda, copia: vCopia };
+  if (v.name === 'plazo' && !findPlazo(v.id)) { S.view = { name: 'home' }; return render(); }
+  app.innerHTML = (views[v.name] || vHome)();
+  $('#navwrap').innerHTML = (v.name === 'home' || v.name === 'calendario') ? navHTML(v.name) : '';
+  if (v.name === 'nuevo') pintaCalculo();
+  if (v.name === 'calendario') { const s = $('.pill.sel'); if (s) s.scrollIntoView({ block: 'nearest', inline: 'center' }); }
+}
+function navHTML(on) {
+  return `<nav class="nav${on === 'calendario' ? ' dark' : ''}" aria-label="Menú principal">
+    <div class="side l"><button class="navb${on === 'home' ? ' on' : ''}" data-go="home">${I.home}<span>Inicio</span><i class="pip"></i></button></div>
+    <div class="mid"><svg class="cut" viewBox="0 0 132 78" preserveAspectRatio="none" aria-hidden="true"><path d="M0 0 C22 0 26 6 30 16 C38 38 50 46 66 46 C82 46 94 38 102 16 C106 6 110 0 132 0 V78 H0 Z"/></svg>
+      <button class="fab" data-act="nuevo" aria-label="Nueva notificación">${I.plus}</button><span class="fab-l">Nueva</span></div>
+    <div class="side r"><button class="navb${on === 'calendario' ? ' on' : ''}" data-go="calendario">${I.cal}<span>Calendario</span><i class="pip"></i></button></div>
+  </nav>`;
+}
+function topbar(title, opts = {}) {
+  const left = opts.menu ? `<button class="ibtn" data-act="menu" aria-label="Menú">${I.menu}</button>` : `<button class="ibtn" data-act="back" aria-label="Volver">${I.back}</button>`;
+  const mid = title ? `<div class="tb-title">${esc(title)}</div>` : `<div class="notch">${I.logo(30)}</div>`;
+  return `<div class="topbar">${left}${mid}${opts.right || '<span></span>'}</div>`;
+}
+const saludo = () => { const h = new Date().getHours(); return h < 14 ? 'Buenos días' : h < 21 ? 'Buenas tardes' : 'Buenas noches'; };
+const coincide = (p, q) => !q || [p.actuacion, p.organo, p.procedimiento, p.cliente, p.nig, (findAbogado(p.abogadoId) || {}).nombre].join(' ').toLowerCase().includes(q.toLowerCase());
+
+function vHome() {
+  const lista = S.plazos.map(p => ({ p, e: estado(p) })).filter(x => coincide(x.p, S.query));
+  const pend = lista.filter(x => x.e.k !== 'hecho').sort((a, b) => (a.e.c ? a.e.c.vence : '9') < (b.e.c ? b.e.c.vence : '9') ? -1 : 1);
+  const grupo = k => pend.filter(x => k.includes(x.e.k));
+  const gHoy = grupo(['vencido', 'gracia', 'hoy']), gPronto = grupo(['pronto']), gTiempo = grupo(['tiempo']);
+  const hechos = lista.filter(x => x.e.k === 'hecho').sort((a, b) => (b.p.hechoEn || 0) - (a.p.hechoEn || 0));
+  // barra de la semana: de lo que vence en los próximos 7 días naturales, cuánto está hecho
+  const t = hoy(), fin = addDias(t, 7);
+  const semana = S.plazos.map(p => ({ p, c: calcular(p) })).filter(x => x.c && x.c.vence >= t && x.c.vence <= fin);
+  const hechosSem = semana.filter(x => x.p.hecho).length;
+  const pctSem = semana.length ? Math.round(hechosSem * 100 / semana.length) : 100;
+  const prox = pend.find(x => x.e.c && x.e.k !== 'vencido');
+  const nombre = (S.perfil.nombre || '').trim().split(/\s+/)[0];
+  const tile = (k, icon, label, n, color) => `<button class="tile${S.filtro === k ? ' on' : ''}" data-act="filtro" data-k="${k}" aria-pressed="${S.filtro === k}">
+      <div class="tb">${icon}${n ? `<span class="cnt" style="background:${color}">${n}</span>` : ''}</div><div class="tl">${label}</div><div class="ts">${n === 1 ? '1 plazo' : n + ' plazos'}</div></button>`;
+  const seccion = (titulo, color, items) => items.length ? `<div class="sec-h"><span><i class="dot" style="background:${color}"></i>${titulo}</span><span>${items.length}</span></div>${items.map(x => cardHTML(x.p, x.e)).join('')}` : '';
+  let cuerpo;
+  if (!S.plazos.length) cuerpo = `<div class="empty"><div style="color:var(--acc)">${I.empty}</div><h3>Aún no hay plazos</h3>Pulsa el botón <b>+ Nueva</b> de abajo para añadir tu primera notificación.<br>Puedes subir el PDF de LexNET y yo leo los datos.</div>`;
+  else {
+    const f = S.filtro;
+    cuerpo = (!f || f === 'hoy' ? seccion('Hoy y vencidos', 'var(--red)', gHoy) : '') + (!f || f === 'pronto' ? seccion('Próximos días', 'var(--amber)', gPronto) : '') + (!f || f === 'tiempo' ? seccion('Con tiempo', 'var(--green)', gTiempo) : '');
+    if (!cuerpo) cuerpo = `<div class="empty">${S.query ? 'No encuentro nada con esa búsqueda.' : 'Nada en este grupo. ¡Bien!'}</div>`;
+    if (hechos.length && !f) cuerpo += S.verHechos ? seccion('Hechos', 'var(--gray)', hechos) + `<button class="linkbtn" data-act="verHechos">Ocultar los hechos</button>` : `<button class="linkbtn" data-act="verHechos">Ver los hechos (${hechos.length})</button>`;
+  }
+  return `<section class="hero">
+    ${topbar('', { menu: true, right: `<button class="ibtn" data-go="ayuda" aria-label="Cómo se cuentan los plazos">${I.info.replace('width="28" height="28"', 'width="30" height="30"')}</button>` })}
+    <p class="hello">${saludo()}${nombre ? ',' : ''}<b>${nombre ? esc(nombre) : 'Tu agenda de plazos'}</b></p>
+    <label class="search">${I.search}<span class="sr">Buscar</span><input id="q" type="search" placeholder="Buscar juzgado, número o cliente…" value="${esc(S.query)}" autocomplete="off"></label>
+    <div class="glass">
+      <div class="row"><div class="gicon">${I.doc(34)}</div><div><h2>Mis plazos</h2><p>${pend.length === 1 ? '1 pendiente' : pend.length + ' pendientes'}${prox ? (prox.e.c.vence <= hoy() ? ' · hay que mirar uno hoy' : ` · el próximo, ${fCorta(prox.e.c.vence)}`) : ''}</p></div></div>
+      <div class="gbar"><i style="width:${pctSem}%"></i></div>
+      <div class="gcap">${semana.length ? `Esta semana: ${hechosSem} de ${semana.length} hechos` : 'No vence nada en los próximos 7 días'}</div>
+    </div>
+    ${waveSVG()}
+  </section>
+  <section class="sec">
+    <div class="tiles">
+      ${tile('hoy', I.tHoy, 'Hoy', gHoy.length, 'var(--red)')}
+      ${tile('pronto', I.tPronto, 'Próximos', gPronto.length, 'var(--amber)')}
+      ${tile('tiempo', I.tTiempo, 'Con tiempo', gTiempo.length, 'var(--green)')}
+    </div>
+    ${cuerpo}
+  </section>`;
+}
+function cardHTML(p, e) {
+  e = e || estado(p);
+  const ab = findAbogado(p.abogadoId);
+  const sub = [p.organo, p.procedimiento].filter(Boolean).join(' · ') || p.cliente || 'Sin datos del juzgado';
+  return `<button class="pcard${p.hecho ? ' hecho' : ''}" data-go="plazo" data-id="${p.id}">${badgeHTML(e)}
+    <div class="pc-main"><div class="pc-t">${esc(p.actuacion || 'Plazo sin título')}</div><div class="pc-s">${esc(sub)}</div>
+    <div class="pc-v t-${e.k}">${e.c ? (e.k === 'hecho' ? 'Hecho · vencía ' + fCorta(e.c.vence) : e.k === 'tiempo' || e.k === 'pronto' ? 'Vence ' + fCorta(e.c.vence) : textoEstado(e)) : ''}${ab ? ` <span style="color:var(--muted)">· ${esc(ab.nombre)}</span>` : ''}</div></div>${I.chev}</button>`;
+}
+
+/* ---- nueva notificación / editar ---- */
+function nuevoDraft(p) {
+  return p ? { ...p, _edit: true } : { id: uid(), recepcion: hoy(), hora: 'antes', actuacion: '', cantidad: 5, unidad: 'dias', urgente: false, organo: '', procedimiento: '', nig: '', cliente: '', abogadoId: '', notas: '', resolucion: '', pdfName: '', hecho: false, trasladado: null, createdAt: Date.now() };
+}
+let pdfPendiente = null; // archivo PDF elegido en la pantalla de nueva notificación (se guarda al pulsar Guardar)
+function vNuevo() {
+  const d = S.draft; if (!d) { S.view = { name: 'home' }; return vHome(); }
+  const x = d._extract;
+  const chip = ([n, dias]) => `<button class="chip${d.actuacion === n && Number(d.cantidad) === dias && d.unidad === 'dias' ? ' on' : ''}" data-act="accion" data-n="${esc(n)}" data-d="${dias}">${esc(n)}<small>${dias} días hábiles</small></button>`;
+  return `<section class="hero compact">${topbar(d._edit ? 'Editar plazo' : 'Nueva notificación')}${waveSVG()}</section>
+  <section class="sec">
+    ${d._edit ? '' : `<div class="card"><h3><span class="step">1</span>Sube la notificación</h3><p class="sub">El PDF que descargas de LexNET. Lo leo y relleno lo que encuentre. Si no lo tienes, sáltate este paso.</p>
+      <div class="drop">${I.upload}<b>${d.pdfName ? esc(d.pdfName) : 'Elegir PDF'}</b><small>${d.pdfName ? 'Toca para cambiarlo' : 'Toca aquí para buscarlo en el móvil'}</small><input type="file" accept="application/pdf,.pdf" id="pdfIn" aria-label="Elegir PDF de la notificación"></div>
+      <div id="pdfMsg">${x ? extractHTML(x) : ''}</div></div>`}
+    <div class="card"><h3><span class="step">${d._edit ? 1 : 2}</span>¿Cuándo te llegó?</h3><p class="sub">La fecha de recepción que aparece en LexNET.</p>
+      <input class="inp" type="date" data-f="recepcion" value="${esc(d.recepcion)}" aria-label="Fecha de recepción">
+      <label class="lb">¿A qué hora?</label>
+      <div class="seg" role="group"><button data-act="hora" data-v="antes" class="${d.hora !== 'despues' ? 'on' : ''}">Antes de las 15:00</button><button data-act="hora" data-v="despues" class="${d.hora === 'despues' ? 'on' : ''}">Después de las 15:00</button></div></div>
+    <div class="card"><h3><span class="step">${d._edit ? 2 : 3}</span>¿Qué hay que hacer?</h3><p class="sub">Escríbelo o toca uno de los habituales para rellenar también los días.</p>
+      <input class="inp" data-f="actuacion" value="${esc(d.actuacion)}" placeholder="Ej.: Recurso de apelación" aria-label="Qué hay que hacer">
+      <div class="chips" style="margin-top:14px">${ACCIONES.map(chip).join('')}</div>
+      <label class="lb">¿Cuánto plazo?</label>
+      <div class="stepper"><button class="rb" data-act="menos" aria-label="Un día menos">−</button><input class="inp" type="number" inputmode="numeric" min="1" max="365" data-f="cantidad" value="${esc(d.cantidad)}" aria-label="Plazo"><button class="rb" data-act="mas" aria-label="Un día más">+</button></div>
+      <div class="seg" style="margin-top:12px"><button data-act="unidad" data-v="dias" class="${d.unidad !== 'meses' ? 'on' : ''}">Días hábiles</button><button data-act="unidad" data-v="meses" class="${d.unidad === 'meses' ? 'on' : ''}">Meses</button></div>
+      <div style="margin-top:14px"><button class="switch${d.urgente ? ' on' : ''}" data-act="urgente" role="switch" aria-checked="${!!d.urgente}"><span class="tog"></span><span><b>Asunto urgente</b><small>Agosto y Navidad cuentan como días hábiles (por ejemplo, actuaciones urgentes o instrucción penal). Si dudas, pregúntaselo al abogado.</small></span></button></div></div>
+    <div id="calc"></div>
+    <div class="card"><h3><span class="step">${d._edit ? 3 : 4}</span>Datos del asunto</h3><p class="sub">Para reconocerlo en la lista y en el aviso al abogado.</p>
+      <label class="lb">Juzgado o tribunal</label><input class="inp" data-f="organo" value="${esc(d.organo)}" placeholder="Ej.: Juzgado de Primera Instancia nº 3">
+      <label class="lb">Número de procedimiento</label><input class="inp" data-f="procedimiento" value="${esc(d.procedimiento)}" placeholder="Ej.: Procedimiento Ordinario 123/2026">
+      <label class="lb">Cliente o partes</label><input class="inp" data-f="cliente" value="${esc(d.cliente)}" placeholder="Ej.: García contra Banco X">
+      <label class="lb">Abogado</label>
+      <div class="row2"><select class="inp" data-f="abogadoId" aria-label="Abogado"><option value="">— Sin abogado —</option>${S.abogados.map(a => `<option value="${a.id}"${a.id === d.abogadoId ? ' selected' : ''}>${esc(a.nombre)}</option>`).join('')}</select>
+      <button class="rb" style="flex:none;width:54px;height:54px;border-radius:18px;background:var(--card);box-shadow:var(--neu-sm);color:var(--acc);font-size:1.6rem;font-weight:900" data-act="nuevoAbogado" aria-label="Añadir abogado">+</button></div>
+      <label class="lb">Notas</label><textarea class="inp" data-f="notas" placeholder="Lo que quieras recordar">${esc(d.notas)}</textarea></div>
+    <button class="btn" data-act="guardar">${I.check} Guardar plazo</button>
+    <div style="height:30px"></div>
+  </section>`;
+}
+function extractHTML(x) {
+  if (x.cargando) return `<div class="found" style="background:var(--surf)"><span class="spin"></span> Leyendo el PDF…</div>`;
+  if (x.error) return `<div class="found warn err"><b>No he podido leer el texto.</b> ${esc(x.error)} Rellena los datos a mano, el PDF se guarda igualmente.</div>`;
+  const items = [['Juzgado', x.organo], ['Procedimiento', x.procedimiento], ['Partes', x.cliente], ['Resolución', x.resolucion], ['Recibida', x.recepcion ? `${fNum(x.recepcion.fecha)}${x.recepcion.hora ? ' a las ' + x.recepcion.hora : ''}` : ''], ['Plazo', x.plazo ? `${x.plazo.cantidad} ${x.plazo.unidad === 'meses' ? 'meses' : 'días'}` : '']].filter(i => i[1]);
+  if (!items.length) return `<div class="found warn"><b>He abierto el PDF pero no encuentro los datos.</b> Puede que sea una imagen escaneada. Rellénalos a mano.</div>`;
+  return `<div class="found"><b>✓ He encontrado:</b><br>${items.map(([k, v]) => `${k}: <b style="color:inherit">${esc(v)}</b>`).join('<br>')}
+    ${x.plazo && x.plazo.frase ? `<q>«…${esc(x.plazo.frase)}…»</q>` : ''}<div style="margin-top:8px;color:var(--muted)">Revísalo, por si acaso.</div></div>`;
+}
+function pintaCalculo() {
+  const el = $('#calc'); if (!el || !S.draft) return;
+  const d = S.draft, c = calcular(d);
+  if (!c) { el.innerHTML = `<div class="warn" style="margin-bottom:18px"><b>Falta la fecha</b> de recepción para calcular el plazo.</div>`; return; }
+  el.innerHTML = resultHTML(c, d, true);
+}
+function resultHTML(c, p, abierto) {
+  let cmp = '';
+  if (c.saltaVacaciones && !p.urgente) { const alt = calcular({ ...p, urgente: true }); if (alt) cmp = `<div class="cmp">Ojo: he descontado días de agosto o de Navidad. Si el asunto fuera urgente, vencería el <b>${fLarga(alt.vence)}</b>.</div>`; }
+  const mesesNota = p.unidad === 'meses' ? `<div class="cmp">Los plazos por meses se cuentan de fecha a fecha. Revisa con el abogado si le afecta agosto.</div>` : '';
+  return `<div class="result" aria-live="polite"><div class="k">Vence</div><div class="big">${may(fLargaY(c.vence))}</div>
+    <div class="g">Y aún puedes presentarlo hasta las <b>15:00 del ${fLarga(c.gracia)}</b>.</div>${cmp}${mesesNota}
+    <details${abierto ? ' open' : ''}><summary>${I.right} ¿Cómo lo he calculado?</summary>${pasosHTML(c, p)}</details></div>`;
+}
+
+/* ---- ficha de un plazo ---- */
+function vPlazo() {
+  const p = findPlazo(S.view.id), e = estado(p), c = e.c, ab = findAbogado(p.abogadoId);
+  const datos = [['Juzgado', p.organo], ['Procedimiento', p.procedimiento], ['NIG', p.nig], ['Cliente', p.cliente], ['Resolución', p.resolucion], ['Abogado', ab && ab.nombre],
+    ['Recibida', `${fLargaY(p.recepcion)} · ${p.hora === 'despues' ? 'después' : 'antes'} de las 15:00`], ['Plazo', `${p.cantidad} ${p.unidad === 'meses' ? (Number(p.cantidad) === 1 ? 'mes' : 'meses') : 'días hábiles'}${p.urgente ? ' · urgente' : ''}`],
+    ['Avisado', p.trasladado ? 'Sí, el ' + fNum(p.trasladado) : 'Todavía no'], ['Notas', p.notas]].filter(x => x[1]);
+  return `<section class="hero">${topbar('', { right: `<button class="ibtn" data-act="editar" aria-label="Editar">${I.edit.replace('width="32" height="32"', 'width="28" height="28"')}</button>` })}
+    <div class="d-title">${esc(p.actuacion || 'Plazo sin título')}</div>
+    ${c ? `<div class="d-when">Vence el <b>${fLargaY(c.vence)}</b>${p.hecho ? '' : `<br>Puedes presentarlo hasta las 15:00 del <b>${fLarga(c.gracia)}</b>`}</div>` : ''}
+    <div class="count c-${e.k}">${e.k === 'hecho' ? I.check : ''}${textoEstado(e)}</div>
+    ${waveSVG()}</section>
+  <section class="sec">
+    <div class="acts">
+      <button class="act" data-act="avisar"><span class="ab">${I.mail}</span>Avisar al abogado</button>
+      <button class="act" data-act="verPdf"><span class="ab">${I.doc(32)}</span>${p.pdfName ? 'Ver PDF' : 'Sin PDF'}</button>
+      <button class="act" data-act="ics"><span class="ab">${I.ics}</span>A mi calendario</button>
+      <button class="act" data-act="editar"><span class="ab">${I.edit}</span>Cambiar datos</button>
+    </div>
+    <button class="btn ${p.hecho ? 'soft' : 'green'}" data-act="hecho">${p.hecho ? 'Volver a ponerlo pendiente' : I.check + ' Marcar como hecho'}</button>
+    <div style="height:22px"></div>
+    <div class="card"><h3>Datos</h3><dl class="dl" style="margin-top:12px">${datos.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl></div>
+    ${c ? resultHTML(c, p, false) : ''}
+    <button class="btn danger" data-act="borrar">${I.trash} Borrar este plazo</button>
+    <div style="height:24px"></div>
+  </section>`;
+}
+
+/* ---- calendario ---- */
+function vCalendario() {
+  const t = hoy();
+  if (!S.calDia) S.calDia = t;
+  if (!S.calMes) S.calMes = S.calDia.slice(0, 7);
+  const [y, m] = S.calMes.split('-').map(Number);
+  const primero = `${y}-${pad(m)}-01`, nDias = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const offset = (partes(primero).w + 6) % 7; // semana empieza en lunes
+  const porDia = {};
+  for (const p of S.plazos) { const e = estado(p); if (e.c) (porDia[e.c.vence] = porDia[e.c.vence] || []).push({ p, e }); }
+  let celdas = ['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(w => `<div class="wd">${w}</div>`).join('') + '<div></div>'.repeat(offset);
+  for (let d = 1; d <= nDias; d++) {
+    const s = `${y}-${pad(m)}-${pad(d)}`, inh = inhabil(s, false), its = porDia[s] || [];
+    celdas += `<button class="day${inh ? ' inh' : ''}${s === t ? ' today' : ''}${s === S.calDia ? ' sel' : ''}" data-act="dia" data-d="${s}" aria-label="${fLarga(s)}${inh ? ', inhábil' : ''}${its.length ? ', ' + its.length + ' plazos' : ''}">${d}${its.length ? `<span class="dots">${its.slice(0, 3).map(x => `<i style="background:${COLOR[x.e.k]}"></i>`).join('')}</span>` : ''}</button>`;
+  }
+  // tira de días (como la del diseño): dos semanas alrededor del día elegido
+  let pills = '';
+  for (let i = -3; i <= 14; i++) {
+    const s = addDias(S.calDia, i), q = partes(s), its = porDia[s] || [], pend = its.filter(x => x.e.k !== 'hecho');
+    pills += `<button class="pill${inhabil(s, false) ? ' inh' : ''}${s === S.calDia ? ' sel' : ''}" data-act="dia" data-d="${s}" aria-label="${fLarga(s)}">${pend.length ? `<i class="pd" style="background:${COLOR[pend[0].e.k]}"></i>` : ''}${q.d}<small>${MESES_C[q.m - 1]}</small></button>`;
+  }
+  const delDia = (porDia[S.calDia] || []).sort((a, b) => a.p.hecho - b.p.hecho);
+  const motivo = inhabil(S.calDia, false);
+  return `<section class="hero compact">${topbar('Calendario', { menu: true })}${waveSVG()}</section>
+  <section class="sec" style="padding-bottom:6px">
+    <div class="mhead"><button class="rbtn" data-act="mes" data-n="-1" aria-label="Mes anterior">${I.left}</button><h2>${may(MESES[m - 1])} ${y}</h2><button class="rbtn" data-act="mes" data-n="1" aria-label="Mes siguiente">${I.right}</button></div>
+    <div class="grid">${celdas}</div>
+    <div class="legend"><span><i style="background:var(--red)"></i>Urgente</span><span><i style="background:var(--amber)"></i>Próximo</span><span><i style="background:var(--green)"></i>Con tiempo</span><span><i class="hatch"></i>Inhábil</span></div>
+  </section>
+  <svg class="wave-up" viewBox="0 0 400 64" preserveAspectRatio="none" aria-hidden="true"><path d="M0 64 C0 34 16 22 60 20 L330 16 C374 14 400 8 400 0 L400 64 Z"/></svg>
+  <section class="dark-sec">
+    <div class="pills" role="list">${pills}</div>
+    <div class="dsec"><h3>${may(fLargaY(S.calDia))}</h3>
+      <div class="why">${motivo ? 'Día inhábil · ' + esc(motivo) : 'Día hábil'}${delDia.length ? ` · vence${delDia.length > 1 ? 'n' : ''} ${delDia.length}` : ''}</div>
+      ${delDia.length ? delDia.map(({ p, e }) => `<button class="dcard" data-go="plazo" data-id="${p.id}">${badgeHTML(e)}<div class="pc-main"><div class="pc-t">${esc(p.actuacion || 'Plazo')}</div><div class="pc-s">${esc([p.organo, p.procedimiento].filter(Boolean).join(' · '))}</div></div>${I.chev}</button>`).join('') : `<div class="why" style="margin-top:6px">No vence ningún plazo este día.</div>`}
+    </div>
+    <div style="height:12px"></div>
+  </section>`;
+}
+
+/* ---- abogados ---- */
+function vAbogados() {
+  return `<section class="hero compact">${topbar('Abogados')}${waveSVG()}</section>
+  <section class="sec"><p style="color:var(--muted);font-weight:700;margin:0 4px 16px;line-height:1.45">Guarda aquí a los abogados con los que trabajas. Así puedes avisarles de cada notificación con un toque.</p>
+  ${S.abogados.map((a, i) => { const n = S.plazos.filter(p => p.abogadoId === a.id && !p.hecho).length; return `<button class="li" data-act="editAbogado" data-id="${a.id}">${avatar(a.nombre, i)}<div style="flex:1;min-width:0"><div class="t">${esc(a.nombre)}</div><div class="s">${esc([a.email, a.telefono].filter(Boolean).join(' · ') || 'Sin datos de contacto')}</div><div class="s">${n === 1 ? '1 plazo pendiente' : n + ' plazos pendientes'}</div></div>${I.chev}</button>`; }).join('') || `<div class="empty">Todavía no hay abogados.</div>`}
+  <button class="btn" data-act="nuevoAbogado">+ Añadir abogado</button></section>`;
+}
+function abogadoSheet(a, alGuardar) {
+  const nuevo = !a; a = a || { id: uid(), nombre: '', email: '', telefono: '' };
+  sheet(`<h3>${nuevo ? 'Nuevo abogado' : 'Editar abogado'}</h3>
+    <label class="lb">Nombre</label><input class="inp" id="ab-n" value="${esc(a.nombre)}" placeholder="Ej.: Ana López">
+    <label class="lb">Correo electrónico</label><input class="inp" id="ab-e" type="email" inputmode="email" value="${esc(a.email)}" placeholder="ana@despacho.es">
+    <label class="lb">Teléfono</label><input class="inp" id="ab-t" type="tel" inputmode="tel" value="${esc(a.telefono)}" placeholder="600 000 000">
+    <div style="height:18px"></div><button class="btn" id="ab-ok">Guardar</button>
+    ${nuevo ? '' : '<button class="btn danger" id="ab-del">Borrar abogado</button>'}`);
+  setTimeout(() => { const n = $('#ab-n'); if (n && nuevo) n.focus(); }, 300);
+  $('#ab-ok').onclick = async () => {
+    a.nombre = $('#ab-n').value.trim(); a.email = $('#ab-e').value.trim(); a.telefono = $('#ab-t').value.trim();
+    if (!a.nombre) return toast('Escribe el nombre');
+    const i = S.abogados.findIndex(x => x.id === a.id); if (i < 0) S.abogados.push(a); else S.abogados[i] = a;
+    await saveKV('abogados'); closeOverlay(); toast('Abogado guardado'); if (alGuardar) alGuardar(a); else render();
+  };
+  const del = $('#ab-del');
+  if (del) del.onclick = async () => { if (!(await confirmar('¿Borrar a ' + a.nombre + '?', 'Sus plazos se quedan, pero sin abogado.', 'Borrar'))) return; S.abogados = S.abogados.filter(x => x.id !== a.id); await saveKV('abogados'); render(); toast('Borrado'); };
+}
+
+/* ---- festivos ---- */
+function vFestivos() {
+  const y = S.festYear || +hoy().slice(0, 4);
+  const propios = S.festivos.filter(f => f.fecha.startsWith(y + '')).sort((a, b) => a.fecha < b.fecha ? -1 : 1);
+  const js = addDias(pascua(y), -3), lp = addDias(pascua(y), 1);
+  const ya = s => S.festivos.some(f => f.fecha === s);
+  return `<section class="hero compact">${topbar('Festivos')}${waveSVG()}</section>
+  <section class="sec">
+    <div class="mhead"><button class="rbtn" data-act="festYear" data-n="-1" aria-label="Año anterior">${I.left}</button><h2>${y}</h2><button class="rbtn" data-act="festYear" data-n="1" aria-label="Año siguiente">${I.right}</button></div>
+    <div class="card"><h3>Tus festivos</h3><p class="sub">Los de tu comunidad autónoma y los de tu localidad. Cada año salen en el boletín oficial: añádelos aquí para que no cuenten en los plazos.</p>
+      ${propios.map(f => `<div class="fest"><div>${esc(f.nombre || 'Festivo')}<br><span>${fLarga(f.fecha)}</span></div><button class="x" data-act="delFest" data-d="${f.fecha}" aria-label="Quitar">${I.trash}</button></div>`).join('') || '<p class="sub" style="margin:0">Aún no has añadido ninguno de ' + y + '.</p>'}
+      <label class="lb">Añadir un festivo</label>
+      <div class="row2"><input class="inp" type="date" id="fe-d" value="${y}-01-01" aria-label="Fecha"><input class="inp" id="fe-n" placeholder="Nombre" aria-label="Nombre del festivo"></div>
+      <div style="height:12px"></div><button class="btn soft" data-act="addFest">+ Añadir</button>
+      <div class="chips" style="margin-top:16px">
+        ${ya(js) ? '' : `<button class="chip" data-act="quickFest" data-d="${js}" data-n="Jueves Santo">+ Jueves Santo<small>${fCorta(js)} · en casi todas las comunidades</small></button>`}
+        ${ya(lp) ? '' : `<button class="chip" data-act="quickFest" data-d="${lp}" data-n="Lunes de Pascua">+ Lunes de Pascua<small>${fCorta(lp)} · en algunas comunidades</small></button>`}
+      </div></div>
+    <div class="card"><h3>Ya incluidos siempre</h3><p class="sub">No hace falta que los añadas.</p>
+      <div class="fest"><div>Sábados y domingos</div></div>
+      <div class="fest"><div>Todo agosto<br><span>salvo asuntos urgentes</span></div></div>
+      <div class="fest"><div>Del 24 de diciembre al 6 de enero<br><span>salvo asuntos urgentes (el 24 y el 31, siempre)</span></div></div>
+      ${nacionales(y).map(([f, n]) => `<div class="fest"><div>${esc(n)}<br><span>${fLarga(f)}</span></div></div>`).join('')}
+    </div>
+  </section>`;
+}
+
+/* ---- mis datos ---- */
+function vPerfil() {
+  return `<section class="hero compact">${topbar('Mis datos')}${waveSVG()}</section>
+  <section class="sec"><div class="card"><h3>Tú</h3><p class="sub">Se usa para saludarte y para firmar los avisos a los abogados.</p>
+    <label class="lb">Tu nombre</label><input class="inp" id="pf-n" value="${esc(S.perfil.nombre)}" placeholder="Ej.: Carmen Pérez">
+    <label class="lb">Firma de los correos<small>Lo que quieres que salga al final del aviso.</small></label><textarea class="inp" id="pf-f" placeholder="Carmen Pérez&#10;Procuradora de los Tribunales">${esc(S.perfil.firma)}</textarea>
+    <div style="height:18px"></div><button class="btn" data-act="guardarPerfil">Guardar</button></div></section>`;
+}
+
+/* ---- ayuda ---- */
+function vAyuda() {
+  return `<section class="hero compact">${topbar('Cómo se cuentan')}${waveSVG()}</section>
+  <section class="sec help">
+    <div class="card"><h3>Paso a paso</h3><ul>
+      <li><b>Llega la notificación a LexNET.</b> Si llega antes de las 15:00 de un día hábil, se entiende <b>notificada al día hábil siguiente</b>.</li>
+      <li>Si llega <b>después de las 15:00</b> o un día inhábil, cuenta como recibida al día hábil siguiente, y notificada al otro.</li>
+      <li>El plazo <b>empieza a contar al día siguiente</b> de la notificación.</li>
+      <li>Por días: solo cuentan los <b>días hábiles</b>. No cuentan sábados, domingos, festivos, <b>agosto</b> ni <b>del 24 de diciembre al 6 de enero</b>.</li>
+      <li>Por meses: se cuenta <b>de fecha a fecha</b>. Si el último día es inhábil, pasa al siguiente hábil.</li>
+      <li>Aunque haya vencido, se puede presentar <b>hasta las 15:00 del día hábil siguiente</b> (día de gracia).</li></ul></div>
+    <div class="card"><h3>Un ejemplo</h3><p style="margin:0">Llega el <b>lunes</b> por la mañana con 5 días de plazo → se entiende notificada el <b>martes</b> → el plazo va de <b>miércoles</b> a <b>martes</b> de la semana siguiente (sin contar el fin de semana) → se puede presentar hasta las 15:00 del <b>miércoles</b>.</p></div>
+    <div class="card"><h3>Importante</h3><p style="margin:0">La app te ayuda a no olvidar ningún plazo, pero <b>la última palabra es tuya</b>: revisa siempre el plazo que dice la resolución y los festivos de tu localidad (añádelos en <i>Festivos</i>).</p>
+      <p class="sub" style="margin:10px 0 0">Normas: arts. 130, 133, 135.5, 151.2 y 162 LEC; arts. 182 y 183 LOPJ.</p></div>
+  </section>`;
+}
+
+/* ---- copia de seguridad ---- */
+function vCopia() {
+  return `<section class="hero compact">${topbar('Copia de seguridad')}${waveSVG()}</section>
+  <section class="sec"><div class="card"><h3>Tus datos están en este móvil</h3><p class="sub">No se envían a ningún sitio. Por eso conviene guardar una copia de vez en cuando (por ejemplo, mandártela por correo) por si cambias de móvil o se borra el navegador.</p>
+    <button class="btn" data-act="exportar">Guardar una copia</button>
+    <button class="btn soft" data-act="importar">Recuperar desde una copia</button>
+    <input type="file" id="impIn" accept="application/json,.json" hidden></div>
+    <div class="card"><h3>Todos los plazos a tu calendario</h3><p class="sub">Un archivo con todos los vencimientos pendientes, con aviso a las 9:00 dos días antes y el día anterior.</p>
+    <button class="btn soft" data-act="icsTodos">${I.ics} Exportar al calendario</button></div></section>`;
+}
+
+/* ---------- menú lateral, hojas y confirmaciones ---------- */
+function drawer() {
+  const item = (icon, label, attr) => `<button class="mi" ${attr}><span class="mb">${icon}</span>${label}</button>`;
+  $('#ov').innerHTML = `<div class="backdrop" data-act="close"></div><nav class="drawer" aria-label="Menú">
+    <div class="brand"><div class="notch" style="background:linear-gradient(150deg,var(--deep1),var(--deep3))">${I.logo(30)}</div><div><b>Mis Plazos</b><small>Agenda de la procuradora</small></div></div>
+    ${item(I.doc(28), 'Mis plazos', 'data-go="home"')}
+    ${item(I.tPronto.replace(/width="46" height="46"/, 'width="28" height="28"'), 'Calendario', 'data-go="calendario"')}
+    ${item(I.people, 'Abogados', 'data-go="abogados"')}
+    ${item(I.flag, 'Festivos', 'data-go="festivos"')}
+    ${item(I.user, 'Mis datos', 'data-go="perfil"')}
+    ${item(I.safe, 'Copia de seguridad', 'data-go="copia"')}
+    ${item(I.info, 'Cómo se cuentan los plazos', 'data-go="ayuda"')}
+    ${enArtefacto() || window.matchMedia('(display-mode: standalone)').matches ? '' : item(I.phone, 'Instalar en el móvil', 'data-act="instalar"')}
+    ${enArtefacto() ? '' : item(I.refresh, 'Buscar actualización', 'data-act="actualizar"')}
+    <div class="ver">Mis Plazos · ${VERSION}</div></nav>`;
+}
+function sheet(html) { $('#ov').innerHTML = `<div class="backdrop" data-act="close"></div><div class="sheet" role="dialog" aria-modal="true"><div class="grab"></div><button class="sclose" data-act="close" aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>${html}</div>`; }
+function closeOverlay() { $('#ov').innerHTML = ''; }
+function confirmar(titulo, texto, ok = 'Sí') {
+  return new Promise(res => {
+    sheet(`<h3>${esc(titulo)}</h3><p>${esc(texto)}</p><div class="row2"><button class="btn soft" id="cf-no">Cancelar</button><button class="btn" id="cf-si" style="margin-top:0">${esc(ok)}</button></div>`);
+    $('#cf-no').onclick = () => { closeOverlay(); res(false); };
+    $('#cf-si').onclick = () => { closeOverlay(); res(true); };
+    $('.backdrop').onclick = () => { closeOverlay(); res(false); };
+  });
+}
+
+/* ---------- leer el PDF de LexNET ---------- */
+let pdfjsP = null;
+async function textoPDF(file) {
+  if (!pdfjsP) pdfjsP = import(new URL('vendor/pdf.min.mjs', document.baseURI).href).then(m => { m.GlobalWorkerOptions.workerSrc = new URL('vendor/pdf.worker.min.mjs', document.baseURI).href; return m; });
+  const pdfjs = await pdfjsP;
+  const doc = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()), isEvalSupported: false }).promise;
+  let txt = '';
+  for (let i = 1; i <= Math.min(doc.numPages, 8); i++) {
+    const pg = await doc.getPage(i), tc = await pg.getTextContent();
+    for (const it of tc.items) txt += (it.str || '') + (it.hasEOL ? '\n' : ' ');
+    txt += '\n';
+  }
+  return txt.replace(/[ \t\u00a0]+/g, ' ');
+}
+const NUMS = { un: 1, uno: 1, una: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10, once: 11, doce: 12, trece: 13, catorce: 14, quince: 15,
+  'dieciséis': 16, dieciseis: 16, diecisiete: 17, dieciocho: 18, diecinueve: 19, veinte: 20, veinticinco: 25, treinta: 30, cuarenta: 40, sesenta: 60 };
+const capitaliza = s => /[a-záéíóúñ]/.test(s) ? s : s.toLowerCase().replace(/(^|[\s(/-])([a-záéíóúñ])/g, (m, a, b) => a + b.toUpperCase()).replace(/\b(De|Del|La|Las|Los|El|Y|En|Contra)\b/g, w => w.toLowerCase()).replace(/\bNº\b|\bN\.º/gi, 'nº').replace(/\b([a-z])\.\s?([a-z])\b\.?/gi, (m, a, b) => `${a.toUpperCase()}.${b.toUpperCase()}.`);
+const limpia = s => (s || '').replace(/\s+/g, ' ').replace(/^[\s:.,-]+|[\s:.,-]+$/g, '').trim();
+// Saca de un texto de notificación lo que pueda: juzgado, procedimiento, NIG, partes, resolución, plazo y fecha de LexNET.
+function extraer(txt) {
+  const r = {}; const t = txt || '';
+  let m = t.match(/((?:JUZGADO|Juzgado|TRIBUNAL|Tribunal|AUDIENCIA|Audiencia)\s+(?:DE|de|SUPERIOR|Superior|PROVINCIAL|Provincial|NACIONAL|Nacional|MERCANTIL|Mercantil|DECANO|Decano)[^\n]{3,90})/);
+  if (m) r.organo = capitaliza(limpia(m[1].split(/\s{2,}|\bN\.?I\.?G\b|\bTel[eé]f|\bTfno|\bC\/|\bCalle\b|\bAvda?\b/i)[0]));
+  m = t.match(/(?:Procedimiento|PROCEDIMIENTO|Autos|AUTOS|Asunto|ASUNTO)\s*:?\s*([^\n]{0,70}?\d{1,7}\s*\/\s*\d{2,4})/) || t.match(/\b([A-ZÁÉÍÓÚ][A-Za-zÁÉÍÓÚáéíóúñÑ. ]{2,45}?\s+(?:n[ºo°.]*\s*)?\d{1,7}\s*\/\s*\d{4})\b/);
+  if (m) r.procedimiento = capitaliza(limpia(m[1])).replace(/\s*\/\s*/, '/');
+  m = t.match(/N\.?\s?I\.?\s?G\.?\s*:?\s*([0-9][0-9 ]{10,24}[0-9])/i);
+  if (m) r.nig = m[1].replace(/\s+/g, '');
+  const parte = re => { const x = t.match(re); return x ? capitaliza(limpia(x[1].replace(/^(?:D\/?ña\.?|D\.ª|D\.|Dña\.?|Don|Doña)\s*/i, '').split(/\s{2,}|Procurador|PROCURADOR|Abogado|ABOGADO|Letrad/)[0])) : ''; };
+  const a = parte(/(?:DEMANDANTE|EJECUTANTE|RECURRENTE|APELANTE|SOLICITANTE)S?\s*(?:\(S\))?\s*:?\s*([^\n]{3,80})/i);
+  const b = parte(/(?:DEMANDADO|EJECUTADO|RECURRIDO|APELADO)S?\s*(?:\(S\))?\s*:?\s*([^\n]{3,80})/i);
+  if (a || b) r.cliente = [a, b].filter(Boolean).join(' contra ');
+  m = t.match(/\b(DILIGENCIA DE ORDENACI[OÓ]N|DECRETO|PROVIDENCIA|AUTO|SENTENCIA|C[EÉ]DULA DE (?:NOTIFICACI[OÓ]N|EMPLAZAMIENTO|CITACI[OÓ]N)|EMPLAZAMIENTO|REQUERIMIENTO)\b/);
+  if (m) r.resolucion = capitaliza(m[1]);
+  m = t.match(/(?:plazo|t[eé]rmino)\s+(?:com[uú]n\s+|improrrogable\s+|legal\s+|m[aá]ximo\s+)?de\s+([a-záéíóúñ]+|\d{1,3})\s*(?:\(\s*\d{1,3}\s*\)\s*)?(d[ií]as|mes(?:es)?)/i);
+  if (m) {
+    const w = m[1].toLowerCase(), n = /^\d+$/.test(w) ? +w : NUMS[w];
+    if (n) { const i = m.index; r.plazo = { cantidad: n, unidad: /^mes/i.test(m[2]) ? 'meses' : 'dias', frase: limpia(t.slice(Math.max(0, i - 90), i + m[0].length + 40)) }; }
+  }
+  if (r.plazo) {
+    const ctx = r.plazo.frase.toLowerCase();
+    const verbo = [[/apelaci/, 'Recurso de apelación'], [/reposici/, 'Recurso de reposición'], [/revisi[oó]n/, 'Recurso de revisión'], [/contest/, 'Contestar demanda'], [/oposici/, 'Oposición'],
+      [/impugn/, 'Impugnar'], [/subsan/, 'Subsanar'], [/alega/, 'Alegaciones'], [/aleg|manifest/, 'Manifestar lo que convenga'], [/traslado/, 'Traslado']].find(([re]) => re.test(ctx));
+    r.actuacion = verbo ? verbo[1] : (r.resolucion ? r.resolucion + ': plazo' : '');
+  } else if (r.resolucion === 'Sentencia') r.actuacion = 'Sentencia: valorar recurso';
+  // carátula de LexNET: «Fecha-hora envío: 13/10/2026 10:23» o «Fecha recepción…»
+  m = t.match(/(?:recepci[oó]n|recibid[oa]|env[ií]o|entrada)[^0-9\n]{0,40}(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})(?:[^0-9\n]{1,6}(\d{1,2}):(\d{2}))?/i);
+  if (m) { const f = `${m[3]}-${pad(m[2])}-${pad(m[1])}`; if (validFecha(f) && +m[2] <= 12) r.recepcion = { fecha: f, hora: m[4] ? `${pad(m[4])}:${m[5]}` : '' }; }
+  return r;
+}
+async function onPDF(file) {
+  if (!file) return;
+  const d = S.draft; if (!d) return;
+  pdfPendiente = file; d.pdfName = file.name; d._extract = { cargando: true };
+  render();
+  try {
+    const x = extraer(await textoPDF(file));
+    if (!S.draft || S.draft.id !== d.id) return;
+    d._extract = x;
+    for (const k of ['organo', 'procedimiento', 'nig', 'cliente', 'resolucion', 'actuacion']) if (x[k] && !d[k]) d[k] = x[k];
+    if (x.plazo) { d.cantidad = x.plazo.cantidad; d.unidad = x.plazo.unidad; }
+    if (x.recepcion) { d.recepcion = x.recepcion.fecha; if (x.recepcion.hora) d.hora = x.recepcion.hora >= '15:00' ? 'despues' : 'antes'; }
+  } catch (err) { console.error(err); d._extract = { error: 'Puede que el archivo esté protegido o dañado.' }; }
+  render();
+}
+
+/* ---------- avisar al abogado, calendario, copias ---------- */
+function textoAviso(p) {
+  const c = calcular(p), ab = findAbogado(p.abogadoId);
+  const asunto = [p.procedimiento, p.organo].filter(Boolean).join(' · ');
+  const lineas = [`Hola${ab ? ' ' + ab.nombre.split(/\s+/)[0] : ''}:`, '',
+    `Te traslado la notificación recibida el ${fLargaY(p.recepcion)}${p.resolucion ? ` (${p.resolucion.toLowerCase()})` : ''}.`, '',
+    p.organo ? `Juzgado: ${p.organo}` : null, p.procedimiento ? `Procedimiento: ${p.procedimiento}` : null, p.cliente ? `Partes: ${p.cliente}` : null,
+    p.actuacion ? `Trámite: ${p.actuacion}` : null, `Plazo: ${p.cantidad} ${p.unidad === 'meses' ? 'meses' : 'días hábiles'}`,
+    c ? `Vence: ${fLargaY(c.vence)}` : null, c ? `(Presentación hasta las 15:00 del ${fLarga(c.gracia)})` : null, '',
+    'Un saludo,', S.perfil.firma || S.perfil.nombre || null].filter(l => l !== null);
+  return { asunto: `Notificación ${asunto || p.actuacion || ''}${c ? ' · vence ' + fNum(c.vence) : ''}`.trim(), cuerpo: lineas.join('\n').trim() };
+}
+async function avisarSheet(p) {
+  const ab = findAbogado(p.abogadoId), { asunto, cuerpo } = textoAviso(p);
+  const pdf = p.pdfName ? await Store.getPDF(p.id) : null;
+  sheet(`<h3>Avisar ${ab ? 'a ' + esc(ab.nombre) : 'al abogado'}</h3><p>Puedes cambiar el texto antes de enviarlo.</p>
+    ${S.abogados.length ? `<select class="inp" id="av-ab" aria-label="Abogado"><option value="">— Elegir abogado —</option>${S.abogados.map(a => `<option value="${a.id}"${a.id === p.abogadoId ? ' selected' : ''}>${esc(a.nombre)}</option>`).join('')}</select><div style="height:12px"></div>` : ''}
+    <textarea class="inp" id="av-t" rows="12" style="min-height:240px">${esc(cuerpo)}</textarea>
+    <div style="height:16px"></div>
+    <button class="btn" id="av-mail">${I.mail.replace('width="32" height="32"', 'width="26" height="26"')} Enviar por correo</button>
+    <button class="btn soft" id="av-share">${I.share.replace('width="32" height="32"', 'width="26" height="26"')} ${pdf ? 'Compartir con el PDF (WhatsApp…)' : 'Compartir (WhatsApp…)'}</button>
+    <button class="btn danger" id="av-copy" style="color:var(--acc)">Copiar el texto</button>
+    ${pdf ? '<p style="margin:8px 0 0;font-size:.85rem">Por correo no se puede adjuntar el PDF automáticamente: usa «Compartir» y elige tu correo para que vaya adjunto.</p>' : ''}`);
+  const sel = $('#av-ab');
+  const marcar = async () => { p.trasladado = hoy(); if (sel && sel.value) p.abogadoId = sel.value; await savePlazo(p); };
+  if (sel) sel.onchange = () => { p.abogadoId = sel.value; $('#av-t').value = textoAviso(p).cuerpo; };
+  $('#av-mail').onclick = async () => {
+    const a = findAbogado(sel ? sel.value : p.abogadoId);
+    location.href = `mailto:${encodeURIComponent(a && a.email || '')}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent($('#av-t').value)}`;
+    await marcar(); closeOverlay(); render();
+  };
+  $('#av-share').onclick = async () => {
+    const text = $('#av-t').value, data = { title: asunto, text };
+    if (pdf) { const f = new File([pdf.blob], pdf.name || 'notificacion.pdf', { type: 'application/pdf' }); if (navigator.canShare && navigator.canShare({ files: [f] })) data.files = [f]; }
+    if (!navigator.share) { try { await navigator.clipboard.writeText(text); toast('Texto copiado: pégalo donde quieras'); } catch { toast('Tu navegador no permite compartir'); } return; }
+    try { await navigator.share(data); await marcar(); closeOverlay(); render(); } catch (err) { if (!err || err.name !== 'AbortError') toast('No se pudo compartir'); }
+  };
+  $('#av-copy').onclick = async () => { try { await navigator.clipboard.writeText($('#av-t').value); toast('Texto copiado'); await marcar(); } catch { toast('No se pudo copiar'); } };
+}
+const icsEsc = s => String(s || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+const icsFold = l => { const out = []; let s = l; while (s.length > 74) { out.push(s.slice(0, 74)); s = ' ' + s.slice(74); } out.push(s); return out.join('\r\n'); };
+function icsEvento(p) {
+  const c = calcular(p); if (!c) return '';
+  const d = c.vence.replace(/-/g, ''), d2 = addDias(c.vence, 1).replace(/-/g, '');
+  const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
+  const titulo = `Vence: ${p.actuacion || 'plazo'}${p.procedimiento ? ' · ' + p.procedimiento : ''}`;
+  const desc = textoAviso(p).cuerpo;
+  return ['BEGIN:VEVENT', `UID:${p.id}@misplazos`, `DTSTAMP:${stamp}`, `DTSTART;VALUE=DATE:${d}`, `DTEND;VALUE=DATE:${d2}`, `SUMMARY:${icsEsc(titulo)}`, `DESCRIPTION:${icsEsc(desc)}`,
+    'BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${icsEsc(titulo)}`, 'TRIGGER:-P1DT15H', 'END:VALARM',
+    'BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${icsEsc(titulo)}`, 'TRIGGER:-PT15H', 'END:VALARM', 'END:VEVENT'].map(icsFold).join('\r\n');
+}
+const icsArchivo = eventos => ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Mis Plazos//ES', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', ...eventos.filter(Boolean), 'END:VCALENDAR'].join('\r\n') + '\r\n';
+const blobToB64 = b => new Promise(res => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.readAsDataURL(b); });
+const b64ToBlob = (b64, type) => { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new Blob([u], { type }); };
+async function exportar() {
+  const pdfs = {};
+  for (const p of S.plazos) if (p.pdfName) { const x = await Store.getPDF(p.id); if (x && x.blob) pdfs[p.id] = { name: x.name, b64: await blobToB64(x.blob) }; }
+  const data = { app: 'mis-plazos', version: 1, fecha: new Date().toISOString(), plazos: S.plazos, abogados: S.abogados, festivos: S.festivos, perfil: S.perfil, pdfs };
+  await deliver(new Blob([JSON.stringify(data)], { type: 'application/json' }), `mis-plazos-copia-${hoy()}.json`);
+}
+async function importar(file) {
+  try {
+    const data = JSON.parse(await file.text());
+    if (data.app !== 'mis-plazos' || !Array.isArray(data.plazos)) throw new Error('formato');
+    if (!(await confirmar('¿Recuperar esta copia?', `Tiene ${data.plazos.length} plazos y ${(data.abogados || []).length} abogados. Se juntan con lo que ya tienes (si un plazo está en los dos sitios, gana el de la copia).`, 'Recuperar'))) return;
+    for (const p of data.plazos) await savePlazo(p);
+    for (const [id, x] of Object.entries(data.pdfs || {})) await Store.putPDF(id, { name: x.name, blob: b64ToBlob(x.b64, 'application/pdf') });
+    for (const a of data.abogados || []) if (!findAbogado(a.id)) S.abogados.push(a);
+    for (const f of data.festivos || []) if (!S.festivos.some(x => x.fecha === f.fecha)) S.festivos.push(f);
+    if (data.perfil && !S.perfil.nombre) S.perfil = { ...S.perfil, ...data.perfil };
+    await Promise.all([saveKV('abogados'), saveKV('festivos'), saveKV('perfil')]);
+    toast('Copia recuperada'); go({ name: 'home' }, true);
+  } catch (err) { console.error(err); toast('Ese archivo no es una copia de Mis Plazos'); }
+}
+// Entrega de archivos: capacidad de claude.ai · compartir · descarga
+async function deliver(blob, filename) {
+  if (downloadsNS) {
+    try { await downloadsNS.save({ filename, data: blob }); toast('Archivo guardado'); return; }
+    catch (err) { if (err && err.code === 'declined') return; console.warn('downloads', err); }
+  }
+  const file = new File([blob], filename, { type: blob.type || 'application/octet-stream' });
+  if (navigator.canShare && navigator.canShare({ files: [file] }) && /Android|iPhone|iPad/i.test(navigator.userAgent)) {
+    try { await navigator.share({ files: [file], title: filename }); return; } catch (err) { if (err && err.name === 'AbortError') return; }
+  }
+  if (enArtefacto()) return sheet(`<h3>No se puede descargar aquí</h3><p>Dentro de claude.ai las descargas están limitadas. Abre la app instalable para guardar archivos:</p><a class="btn" href="${esc(APP_URL)}" target="_blank" rel="noopener" style="text-decoration:none">Abrir Mis Plazos</a>`);
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 20000); toast('Descargando ' + filename);
+}
+function instalarSheet() {
+  if (installPrompt) { installPrompt.prompt(); installPrompt.userChoice.finally(() => { installPrompt = null; }); return; }
+  const ios = /iPhone|iPad/i.test(navigator.userAgent);
+  sheet(`<h3>Instalar en el móvil</h3><p>Así tendrás el icono en la pantalla de inicio y funcionará sin cobertura.</p>
+    <div class="card" style="margin-bottom:12px"><b>${ios ? 'iPhone (Safari)' : 'Android (Chrome)'}</b><p class="sub" style="margin:6px 0 0">${ios ? 'Toca el botón <b>Compartir</b> (el cuadrado con la flecha) y elige <b>Añadir a pantalla de inicio</b>.' : 'Toca el menú <b>⋮</b> de arriba a la derecha y elige <b>Instalar aplicación</b> o <b>Añadir a pantalla de inicio</b>.'}</p></div>
+    <p>Dirección de la app:</p><input class="inp" value="${esc(APP_URL)}" readonly onclick="this.select()">
+    <div style="height:14px"></div><button class="btn" data-act="close">Entendido</button>`);
+}
+function bienvenida() {
+  sheet(`<div style="text-align:center;color:var(--acc)">${I.empty}</div><h3 style="text-align:center">¡Hola! Soy tu agenda de plazos</h3>
+    <p style="text-align:center">Subes la notificación de LexNET, te digo cuándo vence y te aviso de lo urgente. Todo se queda guardado en este móvil.</p>
+    <label class="lb">¿Cómo te llamas?</label><input class="inp" id="bv-n" placeholder="Tu nombre" autocomplete="given-name">
+    <div style="height:18px"></div><button class="btn" id="bv-ok">Empezar</button>`);
+  $('#bv-ok').onclick = async () => {
+    S.perfil.nombre = $('#bv-n').value.trim(); S.perfil.visto = true; await saveKV('perfil'); closeOverlay(); render();
+    if (!S.festivos.length) setTimeout(() => toast('Consejo: añade los festivos de tu localidad en el menú ☰ → Festivos'), 600);
+  };
+}
+
+/* ---------- eventos ---------- */
+document.addEventListener('click', async e => {
+  const g = e.target.closest('[data-go]');
+  if (g) { if (g.dataset.go === S.view.name && !g.dataset.id) { closeOverlay(); return; } return go({ name: g.dataset.go, id: g.dataset.id }); }
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const act = b.dataset.act, d = S.draft, p = S.view.id && findPlazo(S.view.id);
+  switch (act) {
+    case 'menu': return drawer();
+    case 'close': return closeOverlay();
+    case 'back': return back();
+    case 'filtro': S.filtro = S.filtro === b.dataset.k ? null : b.dataset.k; return render();
+    case 'verHechos': S.verHechos = !S.verHechos; return render();
+    case 'nuevo': S.draft = nuevoDraft(); pdfPendiente = null; return go({ name: 'nuevo' });
+    case 'editar': S.draft = nuevoDraft(p); pdfPendiente = null; return go({ name: 'nuevo', id: p.id });
+    case 'hora': d.hora = b.dataset.v; b.parentNode.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); return pintaCalculo();
+    case 'unidad': d.unidad = b.dataset.v; b.parentNode.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); return pintaCalculo();
+    case 'urgente': d.urgente = !d.urgente; b.classList.toggle('on', d.urgente); b.setAttribute('aria-checked', d.urgente); return pintaCalculo();
+    case 'menos': case 'mas': { d.cantidad = Math.min(365, Math.max(1, (Number(d.cantidad) || 0) + (act === 'mas' ? 1 : -1))); $('[data-f="cantidad"]').value = d.cantidad; document.querySelectorAll('.chip').forEach(x => x.classList.remove('on')); return pintaCalculo(); }
+    case 'accion': {
+      d.actuacion = b.dataset.n; d.cantidad = +b.dataset.d; d.unidad = 'dias';
+      $('[data-f="actuacion"]').value = d.actuacion; $('[data-f="cantidad"]').value = d.cantidad;
+      document.querySelectorAll('.chip').forEach(x => x.classList.toggle('on', x === b));
+      document.querySelectorAll('[data-act="unidad"]').forEach(x => x.classList.toggle('on', x.dataset.v === 'dias'));
+      return pintaCalculo();
+    }
+    case 'nuevoAbogado': return abogadoSheet(null, S.view.name === 'nuevo' ? a => { d.abogadoId = a.id; render(); } : null);
+    case 'editAbogado': return abogadoSheet(findAbogado(b.dataset.id));
+    case 'guardar': {
+      if (!validFecha(d.recepcion)) return toast('Pon la fecha en que te llegó');
+      if (!d.actuacion.trim()) d.actuacion = d.resolucion ? d.resolucion : 'Plazo';
+      const { _edit, _extract, ...plazo } = d;
+      plazo.cantidad = Math.max(1, Math.floor(Number(plazo.cantidad) || 1));
+      if (pdfPendiente) { try { await Store.putPDF(plazo.id, { name: pdfPendiente.name, blob: pdfPendiente }); } catch (err) { console.error(err); plazo.pdfName = ''; toast('No se pudo guardar el PDF'); } }
+      await savePlazo(plazo); pdfPendiente = null; S.draft = null;
+      toast(_edit ? 'Cambios guardados' : 'Plazo guardado');
+      return go({ name: 'plazo', id: plazo.id }, true);
+    }
+    case 'hecho': p.hecho = !p.hecho; p.hechoEn = p.hecho ? Date.now() : null; await savePlazo(p); toast(p.hecho ? '¡Hecho! Bien' : 'Vuelve a estar pendiente'); return render();
+    case 'borrar': if (!(await confirmar('¿Borrar este plazo?', 'No se puede deshacer.', 'Borrar'))) return; await Store.del(p.id); await Store.delPDF(p.id).catch(() => {}); S.plazos = S.plazos.filter(x => x.id !== p.id); toast('Plazo borrado'); return go({ name: 'home' }, true);
+    case 'avisar': return avisarSheet(p);
+    case 'verPdf': {
+      if (!p.pdfName) return toast('Este plazo no tiene PDF. Puedes añadirlo creando una notificación nueva.');
+      const x = await Store.getPDF(p.id); if (!x) return toast('No encuentro el PDF');
+      const url = URL.createObjectURL(x.blob); const w = window.open(url, '_blank'); if (!w) await deliver(x.blob, x.name || 'notificacion.pdf'); setTimeout(() => URL.revokeObjectURL(url), 60000); return;
+    }
+    case 'ics': return deliver(new Blob([icsArchivo([icsEvento(p)])], { type: 'text/calendar' }), `plazo-${(p.procedimiento || p.actuacion || 'plazo').replace(/[^\w-]+/g, '-')}.ics`);
+    case 'icsTodos': { const ps = S.plazos.filter(x => !x.hecho); if (!ps.length) return toast('No hay plazos pendientes'); return deliver(new Blob([icsArchivo(ps.map(icsEvento))], { type: 'text/calendar' }), `mis-plazos-${hoy()}.ics`); }
+    case 'dia': S.calDia = b.dataset.d; S.calMes = S.calDia.slice(0, 7); return render();
+    case 'mes': { const [y, m] = S.calMes.split('-').map(Number); const nd = new Date(Date.UTC(y, m - 1 + Number(b.dataset.n), 1)); S.calMes = fromD(nd).slice(0, 7); S.calDia = S.calMes === hoy().slice(0, 7) ? hoy() : S.calMes + '-01'; return render(); }
+    case 'festYear': S.festYear = (S.festYear || +hoy().slice(0, 4)) + Number(b.dataset.n); return render();
+    case 'addFest': case 'quickFest': {
+      const f = act === 'quickFest' ? b.dataset.d : $('#fe-d').value, n = act === 'quickFest' ? b.dataset.n : $('#fe-n').value.trim();
+      if (!validFecha(f)) return toast('Elige la fecha');
+      if (S.festivos.some(x => x.fecha === f) || nacionalDe(f)) return toast('Ese día ya es festivo');
+      S.festivos.push({ fecha: f, nombre: n || 'Festivo local' }); await saveKV('festivos'); toast('Festivo añadido'); return render();
+    }
+    case 'delFest': S.festivos = S.festivos.filter(x => x.fecha !== b.dataset.d); await saveKV('festivos'); return render();
+    case 'guardarPerfil': S.perfil.nombre = $('#pf-n').value.trim(); S.perfil.firma = $('#pf-f').value.trim(); await saveKV('perfil'); toast('Guardado'); return back();
+    case 'exportar': return exportar();
+    case 'importar': return $('#impIn').click();
+    case 'instalar': closeOverlay(); return instalarSheet();
+    case 'actualizar': {
+      closeOverlay(); if (!swReg) return toast('Ya tienes la última versión');
+      toast('Buscando…'); try { await swReg.update(); } catch { } setTimeout(() => { if (!recargando) toast('Ya tienes la última versión (' + VERSION + ')'); }, 2500); return;
+    }
+  }
+});
+document.addEventListener('input', e => {
+  const el = e.target;
+  if (el.id === 'q') { S.query = el.value; const pos = el.selectionStart; render(); const q = $('#q'); if (q) { q.focus(); try { q.setSelectionRange(pos, pos); } catch { } } return; }
+  const f = el.dataset && el.dataset.f; if (!f || !S.draft) return;
+  S.draft[f] = el.value;
+  if (f === 'cantidad' || f === 'actuacion') document.querySelectorAll('.chip').forEach(x => x.classList.toggle('on', x.dataset.n === S.draft.actuacion && +x.dataset.d === Number(S.draft.cantidad) && S.draft.unidad === 'dias'));
+  if (f === 'recepcion' || f === 'cantidad') pintaCalculo();
+});
+document.addEventListener('change', e => {
+  if (e.target.id === 'pdfIn') onPDF(e.target.files[0]);
+  if (e.target.id === 'impIn' && e.target.files[0]) importar(e.target.files[0]);
+});
+
+/* ---------- arranque ---------- */
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installPrompt = e; });
+window.addEventListener('appinstalled', () => { installPrompt = null; toast('App instalada'); });
+(async function init() {
+  try {
+    S.plazos = (await Store.all()) || [];
+    S.abogados = (await Store.getKV('abogados')) || [];
+    S.festivos = (await Store.getKV('festivos')) || [];
+    const pf = await Store.getKV('perfil'); if (pf) S.perfil = { ...S.perfil, ...pf };
+  } catch (err) { console.error(err); toast('No se pudieron cargar los datos guardados'); }
+  history.replaceState({ name: 'home' }, ''); render();
+  if (!S.perfil.visto && !S.plazos.length) bienvenida();
+  if (window.claude && typeof window.claude.use === 'function') { try { downloadsNS = await window.claude.use('downloads'); } catch { downloadsNS = null; } }
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !enArtefacto()) {
+    navigator.serviceWorker.register('sw.js').then(reg => {
+      swReg = reg;
+      if (reg.waiting) reg.waiting.postMessage('skipWaiting');
+      reg.addEventListener('updatefound', () => { const w = reg.installing; if (w) w.addEventListener('statechange', () => { if (w.state === 'installed' && navigator.serviceWorker.controller) w.postMessage('skipWaiting'); }); });
+      setInterval(() => reg.update().catch(() => {}), 60 * 60 * 1000);
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) reg.update().catch(() => {}); });
+    }).catch(() => {});
+    // Cuando entra una versión nueva se recarga sola, salvo si está a medias rellenando una notificación.
+    // La primera vez que se abre la app no había versión anterior: ahí no se recarga (perdería lo que se esté escribiendo).
+    const habiaVersion = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (!habiaVersion || recargando || S.view.name === 'nuevo' || $('#ov').innerHTML) return; recargando = true; location.reload(); });
+  }
+  // Al volver a la app otro día, los estados (hoy, próximos…) se recalculan
+  let dia = hoy();
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && hoy() !== dia) { dia = hoy(); if (S.view.name !== 'nuevo') render(); } });
+})();
+</script>
+</body>
+</html>
