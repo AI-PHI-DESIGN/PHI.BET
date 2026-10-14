@@ -48,7 +48,7 @@ Decisiones de prudencia:
 | **Un solo `index.html`** con CSS y JS inline, sin frameworks ni build | Se publica tal cual en GitHub Pages o como Artifact. |
 | **PWA** (`manifest.webmanifest` + `sw.js` + iconos) | Icono en la pantalla de inicio y funciona sin cobertura. |
 | **IndexedDB** `mis-plazos` con stores `plazos`, `kv` (abogados, festivos, perfil) y `pdfs` (Blob del PDF por plazo) | Los PDF ocupan; localStorage no basta. Respaldo en localStorage si no hay IndexedDB. |
-| **pdf.js 4.10.38 (legacy build) copiado en `vendor/`** desde npm (`npm pack pdfjs-dist@4.10.38`) | Los CDN estaban bloqueados en el entorno y además así funciona sin cobertura. Se carga con `import()` solo al subir un PDF. El service worker lo precachea. |
+| **pdf.js 4.10.38 (legacy build) copiado en `vendor/`** desde npm (`npm pack pdfjs-dist@4.10.38`), con los bytes de control escritos como `\xNN` (la publicación como Artifact rechaza archivos con bytes ESC; dentro de cadenas JS es equivalente) | Los CDN estaban bloqueados en el entorno y además así funciona sin cobertura. Se carga con `import()` solo al subir un PDF. El service worker lo precachea. |
 | **Lectura del PDF con expresiones regulares** (`extraer()`), sin IA | Determinista, gratis y sin conexión. Lee juzgado, procedimiento, NIG, partes, tipo de resolución, «plazo de N días/meses» (con números en letra) y la fecha y hora de la carátula de LexNET. Si el PDF es una imagen escaneada, lo dice y se rellena a mano. |
 | **Fechas como texto `AAAA-MM-DD` y aritmética en UTC** | Sin sorpresas por el cambio de hora. |
 | **Aviso al abogado**: `mailto:` con asunto y cuerpo, `navigator.share` con el PDF como archivo, o copiar texto | El correo por `mailto:` no admite adjuntos; para mandar el PDF se usa Compartir. |
