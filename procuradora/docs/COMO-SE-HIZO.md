@@ -124,3 +124,64 @@ todos los plazos.
 - **Al publicar una versión nueva**: subir `CACHE` en `sw.js` (`mis-plazos-vN`) y `VERSION` en `index.html`.
 - Ideas siguientes que salieron en la conversación: control de provisiones de fondos y aranceles por cliente,
   resúmenes de resoluciones con IA y borradores de escritos de trámite.
+
+## 9. Cuenta con correo y contraseña y datos en todos los dispositivos (v1.1)
+
+Petición: «que tenga que crearse un email y contraseña y en cualquier dispositivo que use la app se le guarde».
+
+- **Servidor: Supabase** (Auth + Postgres + Storage), región Fráncfort. Gratis para una usuaria, cuentas con
+  confirmación por correo y recuperación de contraseña de serie. Preparación en `docs/CUENTA.md` + `docs/supabase.sql`.
+- **Sin librería**: la app habla con la API REST de Supabase con `fetch` (`/auth/v1/*`, `/rest/v1/registros`,
+  `/storage/v1/object/pdfs/*`). Así no hay dependencia que cargar sin cobertura y se puede probar con un servidor de
+  imitación (`tools/fake-supabase.mjs`).
+- **Primero el dispositivo, después la nube**: IndexedDB sigue siendo la fuente de la pantalla (rápido y sin
+  cobertura). Cada guardado marca un pendiente (`marcar('plazo:id' | 'kv:abogados'…)`), que se sube con un
+  *upsert* por lotes; luego se bajan los registros cambiados desde el último `updated_at` (con 60 s de margen) y se
+  fusionan: **gana el `updatedAt` más reciente**, y un cambio local pendiente nunca se pisa. Los borrados viajan como
+  `borrado: true`.
+- **Modelo en el servidor**: una sola tabla `registros (user_id, tipo, id, datos jsonb, borrado, updated_at)`;
+  cada plazo es una fila y abogados, festivos y perfil una fila cada uno. RLS: `auth.uid() = user_id`. El
+  `updated_at` lo pone un *trigger* con `clock_timestamp()`.
+- **PDF**: Storage privado `pdfs/<usuario>/<plazo>.pdf`; se suben al sincronizar y en otro dispositivo se descargan
+  al abrirlos (`obtenerPDF`).
+- **Sesión**: `access_token` + `refresh_token` en IndexedDB; se renueva sola. Los enlaces de los correos (confirmar
+  la cuenta, cambiar la contraseña) vuelven a la app con el token en `#…`, que `enlaceCorreo()` recoge.
+- **Cerrar sesión borra los datos del dispositivo** (avisando si hay cambios sin subir). Si en el dispositivo
+  había datos de antes de tener cuenta, al entrar por primera vez se suben a la cuenta.
+- **Indicador** en la tarjeta de inicio: «Guardado en tu cuenta» / «Guardando…» / «Sin conexión: se guardará al
+  volver».
+- Si `NUBE` está vacío (o dentro del artefacto de claude.ai), la app funciona como antes, sin cuenta.
+
+## 10. Prueba con PDF reales y formato del Tribunal de Instancia (GVA)
+
+El usuario pasó dos notificaciones y dos escritos reales. **No se guardan en el repositorio** (datos de clientes):
+se probaron en local y se crearon modelos inventados con el mismo formato (`tools/make-test-pdf.mjs <modelo>`)
+que comprueba `tools/test-lectura.mjs`. Lo aprendido:
+
+- Juzgado: «Sección … del Tribunal de Instancia de X. Plaza nº N», a veces partido en dos líneas.
+- «Tipo y número de procedimiento: Juicio verbal (250.2) 321/2026» (va en minúscula y antes había que evitar que
+  «Ley 6/2020» del pie de firma se tomase por el número).
+- Partes con tratamientos pegados («D./Dª.Empresa Ejemplo S.L.») y partes de penal (denunciante, denunciado…).
+- Título espaciado «A U T O».
+- El plazo del **modo de impugnación** no es el plazo de la resolución: se ignora para el plazo principal y se ofrece
+  aparte («Recurso de reforma · 3 días», «Recurso de apelación · 5 días»). Si la resolución no da plazo propio, se
+  propone el primero «(si se recurre)».
+- **Escritos** de la procuradora («Procuradora de los Tribunales» + «comparezco/DIGO/SUPLICO»): se avisa de que no
+  abren plazo, el cliente sale de «en nombre y representación de…» y no se rellena plazo.
+
+## 11. Redactar correos con IA
+
+Petición: «un apartado de IA para redactar mail».
+
+- **Claude (Anthropic) desde una Edge Function de Supabase** (`supabase/functions/redactar/index.ts`): la clave
+  `ANTHROPIC_API_KEY` está en los secretos del servidor y la función solo acepta sesiones iniciadas. Modelo
+  `claude-opus-5-5`, `effort: "low"`, salida estructurada `{asunto, cuerpo}` con `output_config.format`
+  (`json_schema`) y `fallbacks: "default"` (beta `server-side-fallback-2026-07-01`) por si un filtro de seguridad
+  rechaza la petición. SDK `@anthropic-ai/sdk@0.128.0` (comprobado con `tsc --strict`).
+- **Las fechas no las decide la IA**: la app le pasa el vencimiento y el día de gracia ya calculados, y el prompt le
+  prohíbe inventar fechas, importes o números.
+- Pantalla «Redactar con IA» (menú, ficha del plazo y hoja de aviso): asunto, destinatario, «¿Qué quieres decir?»
+  con ideas de un toque, tono cercano/formal, «Leer también el PDF» (texto sacado con pdf.js, hasta 20 000
+  caracteres). El resultado es editable y se envía por correo, se comparte con el PDF o se copia.
+- Seguridad de gasto: desactivar el registro de cuentas nuevas en Supabase una vez creada la suya y poner límite de
+  gasto en la consola de Anthropic.

@@ -280,6 +280,19 @@ select.inp{appearance:none;-webkit-appearance:none;background-image:linear-gradi
 .sheet h3{margin:0 0 6px;font-size:1.3rem;font-weight:900}
 .sheet p{color:var(--muted);font-weight:600;line-height:1.45;margin:0 0 14px}
 .row2{display:flex;gap:12px}.row2>*{flex:1}
+.sync{margin-top:12px;display:inline-flex;align-items:center;gap:8px;padding:7px 13px;border-radius:14px;font-size:.78rem;font-weight:800;background:rgba(0,0,0,.25);color:var(--on-deep-muted)}
+.sync i{width:8px;height:8px;border-radius:50%;background:currentColor}
+.s-ok{color:#8FF0C8} .s-offline{color:#FFD08A} .s-error{color:#FF9DB0}
+.s-guardando i{animation:fade 1s ease-in-out infinite alternate}
+.hero.login{text-align:center;padding-top:calc(env(safe-area-inset-top) + 48px);padding-bottom:92px}
+.lg-logo{width:100px;height:100px;margin:0 auto;border-radius:32px;display:grid;place-items:center;background:linear-gradient(150deg,rgba(255,255,255,.16),rgba(255,255,255,.03));box-shadow:0 14px 30px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.2)}
+.lg-t{margin:18px 0 4px;font-size:2.1rem;font-weight:900;letter-spacing:-.01em}
+.lg-s{margin:0;color:var(--on-deep-muted);font-weight:700}
+.pass{position:relative}.pass .inp{padding-right:62px}
+.eye{position:absolute;right:6px;top:5px;width:44px;height:44px;border-radius:14px;display:grid;place-items:center;color:var(--muted)}
+#lg-msg:not(:empty){margin-top:14px}
+.lg-nota{color:var(--muted);font-weight:600;font-size:.88rem;line-height:1.5;text-align:center;margin:4px 14px 34px}
+.btn:disabled{opacity:.75}
 #toast{position:fixed;left:50%;bottom:calc(110px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);opacity:0;pointer-events:none;z-index:60;background:var(--deep2);color:#fff;font-weight:800;padding:14px 22px;border-radius:20px;box-shadow:0 12px 26px rgba(0,0,0,.3);transition:.25s;max-width:88vw;text-align:center}
 #toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 .spin{width:22px;height:22px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--acc);animation:rot .8s linear infinite;display:inline-block}
@@ -308,7 +321,7 @@ select.inp{appearance:none;-webkit-appearance:none;background-image:linear-gradi
 <div id="toast" role="status" aria-live="polite"></div>
 <script>
 'use strict';
-const VERSION = 'v1.0';
+const VERSION = 'v1.1';
 // Dirección pública de la app instalable (GitHub Pages). Si cambia el repositorio, cambiar aquí.
 const APP_URL = 'https://ai-phi-design.github.io/PHI.BET/procuradora/';
 
@@ -473,7 +486,7 @@ const Store = (() => {
   if (!hasIDB) return {
     all: async () => ls.get('plazos') || [], put: async p => { const a = (ls.get('plazos') || []).filter(x => x.id !== p.id); a.push(p); ls.set('plazos', a); },
     del: async id => ls.set('plazos', (ls.get('plazos') || []).filter(x => x.id !== id)),
-    getKV: async k => ls.get(k), setKV: async (k, v) => ls.set(k, v), getPDF: async () => null, putPDF: async () => {}, delPDF: async () => {}
+    getKV: async k => ls.get(k), setKV: async (k, v) => ls.set(k, v), getPDF: async () => null, putPDF: async () => {}, delPDF: async () => {}, clear: async () => { try { Object.keys(localStorage).filter(k => k.startsWith('mp:')).forEach(k => localStorage.removeItem(k)); } catch { } }
   };
   return {
     all: () => tx('plazos', 'readonly', s => s.getAll()),
@@ -483,18 +496,250 @@ const Store = (() => {
     setKV: (k, v) => tx('kv', 'readwrite', s => s.put(v, k)),
     getPDF: id => tx('pdfs', 'readonly', s => s.get(id)),
     putPDF: (id, v) => tx('pdfs', 'readwrite', s => s.put(v, id)),
-    delPDF: id => tx('pdfs', 'readwrite', s => s.delete(id))
+    delPDF: id => tx('pdfs', 'readwrite', s => s.delete(id)),
+    clear: store => tx(store, 'readwrite', s => s.clear())
   };
 })();
 
 /* ---------- estado de la app ---------- */
-const S = { plazos: [], abogados: [], festivos: [], perfil: { nombre: '', firma: '' }, view: { name: 'home' }, filtro: null, query: '', verHechos: false, calMes: null, calDia: null, draft: null, festYear: null };
+const S = { plazos: [], abogados: [], festivos: [], perfil: { nombre: '', firma: '' }, kvT: {}, lgModo: 'entrar', lgEmail: '', view: { name: 'home' }, filtro: null, query: '', verHechos: false, calMes: null, calDia: null, draft: null, festYear: null };
 let downloadsNS = null, swReg = null, recargando = false, installPrompt = null;
 const enArtefacto = () => !!window.claude; // la página se está viendo dentro del artefacto de claude.ai
 const findPlazo = id => S.plazos.find(p => p.id === id);
 const findAbogado = id => S.abogados.find(a => a.id === id);
-const savePlazo = async p => { p.updatedAt = Date.now(); const i = S.plazos.findIndex(x => x.id === p.id); if (i < 0) S.plazos.push(p); else S.plazos[i] = p; await Store.put(p); };
-const saveKV = k => Store.setKV(k, S[k]);
+const savePlazo = async p => { p.updatedAt = Date.now(); const i = S.plazos.findIndex(x => x.id === p.id); if (i < 0) S.plazos.push(p); else S.plazos[i] = p; await Store.put(p); marcar('plazo:' + p.id); };
+const saveKV = async k => { S.kvT[k] = Date.now(); await Store.setKV(k, S[k]); await Store.setKV('kvT', S.kvT); marcar('kv:' + k); };
+/* ---------- cuenta y sincronización entre dispositivos (Supabase) ----------
+   Los datos viven en el dispositivo (IndexedDB), así todo va rápido y funciona sin cobertura, y se copian a la
+   cuenta: cada plazo es un registro y abogados, festivos y perfil son un registro cada uno. Gana el cambio más
+   reciente (updatedAt). Los borrados viajan como registros «borrado». Los PDF van a Storage en <usuario>/<plazo>.pdf.
+   Preparar el servidor: docs/supabase.sql y docs/CUENTA.md. */
+// Datos del proyecto de Supabase (Project Settings → API). La clave «anon» es pública por diseño:
+// lo que protege los datos de cada usuaria son las reglas de docs/supabase.sql.
+const NUBE = { url: '', key: '' };
+const nubeActiva = () => !!(NUBE.url && NUBE.key) && !enArtefacto();
+const N = { ses: null, pend: {}, cursor: 0, pdfOk: {}, estado: 'ok', curso: null, otra: false, timer: null, seq: 0 };
+
+async function api(path, o = {}, reintento) {
+  if (o.auth !== false) await asegurarToken();
+  const h = { apikey: NUBE.key, ...(o.headers || {}) };
+  if (o.auth !== false && N.ses) h.Authorization = 'Bearer ' + N.ses.access_token;
+  let body = o.body;
+  if (body !== undefined && !(body instanceof Blob)) { h['Content-Type'] = 'application/json'; body = JSON.stringify(body); }
+  let r;
+  try { r = await fetch(NUBE.url.replace(/\/$/, '') + path, { method: o.method || 'GET', headers: h, body }); }
+  catch { const e = new Error('offline'); e.offline = true; throw e; }
+  if (r.status === 401 && o.auth !== false && N.ses && !reintento) { await refrescar(); return api(path, o, true); }
+  if (!r.ok) {
+    let j = {}; try { j = await r.json(); } catch { }
+    const e = new Error(j.error_description || j.msg || j.message || j.error || ('Error ' + r.status)); e.status = r.status; e.code = j.error_code || j.code || ''; throw e;
+  }
+  if (o.raw) return r;
+  const t = await r.text(); return t ? JSON.parse(t) : null;
+}
+async function guardarSesion(s) {
+  N.ses = { access_token: s.access_token, refresh_token: s.refresh_token, expires_at: s.expires_at || Math.floor(Date.now() / 1000) + (Number(s.expires_in) || 3600), user: { id: s.user.id, email: s.user.email } };
+  await Store.setKV('sesion', N.ses);
+}
+async function asegurarToken() { if (N.ses && N.ses.expires_at - 60 < Date.now() / 1000) await refrescar(); }
+async function refrescar() {
+  if (!N.ses) return;
+  try { await guardarSesion(await api('/auth/v1/token?grant_type=refresh_token', { method: 'POST', body: { refresh_token: N.ses.refresh_token }, auth: false })); }
+  catch (e) {
+    if (e.offline) throw e;
+    // La sesión ya no vale (contraseña cambiada en otro sitio, por ejemplo): se pide entrar otra vez.
+    // Los datos y los cambios pendientes se quedan en el dispositivo y se suben al volver a entrar.
+    N.ses = null; await Store.setKV('sesion', null); render(); toast('Vuelve a entrar con tu correo y tu contraseña'); throw e;
+  }
+}
+function marcar(clave) { if (!nubeActiva()) return; N.pend[clave] = ++N.seq; Store.setKV('pendientes', N.pend).catch(() => {}); programar(); }
+function programar(ms = 800) { clearTimeout(N.timer); N.timer = setTimeout(sincronizar, ms); }
+const SYNC_TXT = { ok: 'Guardado en tu cuenta', guardando: 'Guardando en tu cuenta…', offline: 'Sin conexión: se guardará al volver', error: 'No se pudo guardar; lo vuelvo a intentar' };
+const syncHTML = () => nubeActiva() && N.ses ? `<div id="sync" class="sync s-${N.estado}"><i></i>${SYNC_TXT[N.estado]}</div>` : '';
+function setEstado(e) { N.estado = e; const el = $('#sync'); if (el) el.outerHTML = syncHTML(); }
+function repintar() { const a = document.activeElement; if (S.view.name === 'nuevo' || $('#ov').innerHTML || (a && /INPUT|TEXTAREA|SELECT/.test(a.tagName))) return; render(); }
+async function sincronizar() {
+  if (!nubeActiva() || !N.ses) return;
+  if (N.curso) { N.otra = true; return N.curso; }
+  N.curso = (async () => {
+    try {
+      setEstado('guardando');
+      await subir();
+      const cambios = await bajar();
+      await subirPDFs();
+      setEstado(Object.keys(N.pend).length ? 'guardando' : 'ok');
+      if (cambios) repintar();
+    } catch (e) { console.warn('sync', e); if (N.ses) { setEstado(e.offline ? 'offline' : 'error'); if (!e.offline) programar(15000); } }
+    finally { N.curso = null; if (N.otra) { N.otra = false; programar(100); } }
+  })();
+  return N.curso;
+}
+async function subir() {
+  const claves = Object.entries(N.pend); if (!claves.length) return;
+  const filas = [], pdfBorrar = [];
+  for (const [k] of claves) {
+    const i = k.indexOf(':'), tipo = k.slice(0, i), id = k.slice(i + 1);
+    if (tipo === 'plazo') {
+      const p = findPlazo(id);
+      if (p) filas.push({ tipo, id, datos: p, borrado: false });
+      else { filas.push({ tipo, id, datos: { id, updatedAt: Date.now() }, borrado: true }); pdfBorrar.push(id); }
+    } else if (tipo === 'kv') filas.push({ tipo, id, datos: { valor: S[id], updatedAt: S.kvT[id] || Date.now() }, borrado: false });
+  }
+  for (let j = 0; j < filas.length; j += 200)
+    await api('/rest/v1/registros?on_conflict=user_id,tipo,id', { method: 'POST', body: filas.slice(j, j + 200), headers: { Prefer: 'resolution=merge-duplicates,return=minimal' } });
+  for (const id of pdfBorrar) { await api(`/storage/v1/object/pdfs/${N.ses.user.id}/${id}.pdf`, { method: 'DELETE' }).catch(() => {}); delete N.pdfOk[id]; }
+  for (const [k, v] of claves) if (N.pend[k] === v) delete N.pend[k];
+  await Store.setKV('pendientes', N.pend);
+}
+const msDe = s => Date.parse(String(s).replace(/(\.\d{3})\d+/, '$1'));
+async function bajar() {
+  // Se piden los registros cambiados desde la última vez (con un minuto de margen, por si dos guardados se cruzan).
+  const desde = new Date(Math.max(0, (N.cursor || 0) - 60000)).toISOString();
+  let cambios = false, offset = 0, max = N.cursor || 0;
+  for (;;) {
+    const filas = await api(`/rest/v1/registros?select=tipo,id,datos,borrado,updated_at&updated_at=gt.${encodeURIComponent(desde)}&order=updated_at.asc,tipo.asc,id.asc&limit=500&offset=${offset}`);
+    for (const r of filas) { if (await fusionar(r)) cambios = true; const t = msDe(r.updated_at); if (t > max) max = t; }
+    if (filas.length < 500) break;
+    offset += filas.length;
+  }
+  if (max !== N.cursor) { N.cursor = max; await Store.setKV('cursor', N.cursor); }
+  return cambios;
+}
+async function fusionar(r) {
+  const rt = (r.datos && r.datos.updatedAt) || 0;
+  if (N.pend[r.tipo + ':' + r.id]) return false; // hay un cambio de este dispositivo esperando a subir: gana ese
+  if (r.tipo === 'plazo') {
+    const local = findPlazo(r.id), lt = local ? local.updatedAt || 0 : 0;
+    if (r.borrado) {
+      if (!local || lt > rt) return false;
+      await Store.del(r.id); await Store.delPDF(r.id).catch(() => {}); S.plazos = S.plazos.filter(x => x.id !== r.id); return true;
+    }
+    if (local && lt >= rt) return false;
+    await Store.put(r.datos);
+    const i = S.plazos.findIndex(x => x.id === r.id); if (i < 0) S.plazos.push(r.datos); else S.plazos[i] = r.datos;
+    return true;
+  }
+  if (r.tipo === 'kv' && ['abogados', 'festivos', 'perfil'].includes(r.id)) {
+    if ((S.kvT[r.id] || 0) >= rt) return false;
+    S[r.id] = r.datos.valor; S.kvT[r.id] = rt;
+    await Store.setKV(r.id, S[r.id]); await Store.setKV('kvT', S.kvT);
+    return true;
+  }
+  return false;
+}
+async function subirPDFs() {
+  for (const p of S.plazos) {
+    if (!p.pdfName || N.pdfOk[p.id]) continue;
+    const x = await Store.getPDF(p.id); if (!x || !x.blob) continue;
+    await api(`/storage/v1/object/pdfs/${N.ses.user.id}/${p.id}.pdf`, { method: 'POST', body: x.blob, headers: { 'Content-Type': 'application/pdf', 'x-upsert': 'true' } });
+    N.pdfOk[p.id] = true; await Store.setKV('pdfOk', N.pdfOk);
+  }
+}
+// El PDF de un plazo: el del dispositivo o, si se subió desde otro, se descarga de la cuenta la primera vez.
+async function obtenerPDF(p) {
+  if (!p || !p.pdfName) return null;
+  let x = await Store.getPDF(p.id); if (x) return x;
+  if (!nubeActiva() || !N.ses) return null;
+  try {
+    const r = await api(`/storage/v1/object/authenticated/pdfs/${N.ses.user.id}/${p.id}.pdf`, { raw: true });
+    x = { name: p.pdfName, blob: new Blob([await r.arrayBuffer()], { type: 'application/pdf' }) };
+    await Store.putPDF(p.id, x); N.pdfOk[p.id] = true; await Store.setKV('pdfOk', N.pdfOk);
+    return x;
+  } catch (e) { toast(e.offline ? 'Sin conexión: el PDF se descargará cuando tengas cobertura' : 'El PDF aún no ha llegado desde el otro dispositivo'); return null; }
+}
+
+/* ---- entrar, crear cuenta, contraseña olvidada, salir ---- */
+const ERRORES_CUENTA = [[/invalid login credentials/i, 'El correo o la contraseña no son correctos.'],
+  [/email not confirmed/i, 'Falta confirmar el correo: abre el mensaje que te hemos enviado y pulsa el enlace.'],
+  [/already registered|already exists/i, 'Ya hay una cuenta con ese correo. Pulsa «Entrar».'],
+  [/at least 6|weak|short/i, 'La contraseña tiene que tener al menos 6 caracteres.'],
+  [/valid email|invalid format|validate email/i, 'Revisa el correo: parece que no está bien escrito.'],
+  [/rate limit|too many/i, 'Demasiados intentos seguidos. Espera un minuto y vuelve a probar.'],
+  [/signups? not allowed|disabled/i, 'Ahora mismo no se pueden crear cuentas nuevas.']];
+const errorCuenta = e => e.offline ? 'No hay conexión. Prueba otra vez cuando tengas cobertura.' : (ERRORES_CUENTA.find(([re]) => re.test(e.message)) || [0, 'No ha funcionado. Prueba otra vez en un momento.'])[1];
+async function iniciarSesion(s) {
+  await guardarSesion(s);
+  const owner = await Store.getKV('owner');
+  if (owner && owner !== N.ses.user.id) await borrarLocal(); // en este dispositivo había datos de otra cuenta
+  else if (!owner) {
+    // Datos que ya estaban en el dispositivo antes de tener cuenta: se suben a la cuenta
+    for (const p of S.plazos) N.pend['plazo:' + p.id] = ++N.seq;
+    if (S.abogados.length) N.pend['kv:abogados'] = ++N.seq;
+    if (S.festivos.length) N.pend['kv:festivos'] = ++N.seq;
+    if (S.perfil.nombre) N.pend['kv:perfil'] = ++N.seq;
+    await Store.setKV('pendientes', N.pend);
+  }
+  await Store.setKV('owner', N.ses.user.id);
+  go({ name: 'home' }, true);
+  await sincronizar();
+  if (!S.perfil.visto && !S.perfil.nombre) bienvenida();
+}
+async function borrarLocal() {
+  await Promise.all(['plazos', 'pdfs', 'kv'].map(s => Store.clear(s).catch(() => {})));
+  S.plazos = []; S.abogados = []; S.festivos = []; S.perfil = { nombre: '', firma: '' }; S.kvT = {};
+  N.pend = {}; N.cursor = 0; N.pdfOk = {}; N.estado = 'ok';
+  if (N.ses) await Store.setKV('sesion', N.ses);
+}
+async function enviarLogin() {
+  const email = $('#lg-e').value.trim().toLowerCase(), pass = $('#lg-p').value, msg = $('#lg-msg'), ok = $('#lg-ok');
+  S.lgEmail = email;
+  const aviso = (t, bien) => { msg.innerHTML = `<div class="${bien ? 'found' : 'warn err'}">${t}</div>`; };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return aviso('Escribe tu correo electrónico completo, por ejemplo <b>nombre@gmail.com</b>.');
+  if (pass.length < 6) return aviso('La contraseña tiene que tener al menos 6 caracteres.');
+  ok.disabled = true; const txt = ok.innerHTML; ok.innerHTML = '<span class="spin" style="border-top-color:#fff"></span>';
+  try {
+    if (S.lgModo === 'crear') {
+      const r = await api('/auth/v1/signup?redirect_to=' + encodeURIComponent(APP_URL), { method: 'POST', body: { email, password: pass }, auth: false });
+      if (r && r.access_token) return await iniciarSesion(r);
+      S.lgModo = 'entrar'; render();
+      $('#lg-msg').innerHTML = `<div class="found"><b>¡Cuenta creada!</b> Te hemos enviado un correo a <b style="color:inherit">${esc(email)}</b>. Ábrelo y pulsa el enlace para activarla; después entra aquí con tu contraseña.</div>`;
+      return;
+    }
+    await iniciarSesion(await api('/auth/v1/token?grant_type=password', { method: 'POST', body: { email, password: pass }, auth: false }));
+  } catch (e) { aviso(errorCuenta(e)); }
+  finally { const b = $('#lg-ok'); if (b && b === ok) { b.disabled = false; b.innerHTML = txt; } }
+}
+function olvidoSheet() {
+  sheet(`<h3>Cambiar la contraseña</h3><p>Escribe tu correo y te mandaremos un enlace para poner una contraseña nueva.</p>
+    <label class="lb" for="ol-e">Correo electrónico</label><input class="inp" id="ol-e" type="email" inputmode="email" autocomplete="email" value="${esc(S.lgEmail || '')}">
+    <div id="ol-msg" role="alert" style="margin-top:12px"></div><div style="height:8px"></div><button class="btn" id="ol-ok">Enviarme el enlace</button>`);
+  $('#ol-ok').onclick = async () => {
+    const email = $('#ol-e').value.trim().toLowerCase();
+    if (!email.includes('@')) return toast('Escribe tu correo');
+    try {
+      await api('/auth/v1/recover?redirect_to=' + encodeURIComponent(APP_URL), { method: 'POST', body: { email }, auth: false });
+      $('#ol-msg').innerHTML = '<div class="found">Listo. Si hay una cuenta con ese correo, en unos minutos te llegará un mensaje. Ábrelo <b style="color:inherit">en este mismo dispositivo</b> y pulsa el enlace.</div>';
+      $('#ol-ok').outerHTML = '<button class="btn soft" data-act="close">Cerrar</button>';
+    } catch (e) { $('#ol-msg').innerHTML = `<div class="warn err">${errorCuenta(e)}</div>`; }
+  };
+}
+// Al pulsar el enlace de un correo (confirmar la cuenta o cambiar la contraseña) se vuelve a la app con la sesión en la dirección
+async function enlaceCorreo() {
+  if (!location.hash || location.hash.length < 2) return;
+  const h = new URLSearchParams(location.hash.slice(1));
+  if (!h.get('access_token') && !h.get('error_description') && !h.get('error')) return;
+  history.replaceState({ name: 'home' }, '', location.pathname + location.search);
+  if (!h.get('access_token')) { setTimeout(() => toast('El enlace ya no vale o ha caducado. Pide otro.'), 300); return; }
+  try {
+    const at = h.get('access_token');
+    const user = await api('/auth/v1/user', { auth: false, headers: { Authorization: 'Bearer ' + at } });
+    await iniciarSesion({ access_token: at, refresh_token: h.get('refresh_token'), expires_in: h.get('expires_in'), user });
+    if (h.get('type') === 'recovery') go({ name: 'clave' });
+    else toast('¡Cuenta activada!');
+  } catch (e) { toast(errorCuenta(e)); }
+}
+async function salir() {
+  if (Object.keys(N.pend).length) await sincronizar();
+  const pendientes = Object.keys(N.pend).length;
+  const ok = pendientes
+    ? await confirmar('Hay cambios sin guardar en tu cuenta', 'Este dispositivo no tiene conexión ahora. Si cierras la sesión, esos cambios se perderán.', 'Cerrar igualmente')
+    : await confirmar('¿Cerrar la sesión?', 'Tus plazos siguen guardados en tu cuenta. En este dispositivo se borran hasta que vuelvas a entrar.', 'Cerrar sesión');
+  if (!ok) return;
+  try { await api('/auth/v1/logout', { method: 'POST' }); } catch { }
+  N.ses = null; await borrarLocal(); await Store.setKV('sesion', null);
+  S.lgModo = 'entrar'; go({ name: 'home' }, true); toast('Sesión cerrada');
+}
+
 
 // Plazos habituales de la LEC para rellenar con un toque (siempre se pueden cambiar)
 const ACCIONES = [['Recurso de reposición', 5], ['Recurso de revisión', 5], ['Recurso de apelación', 20], ['Contestar demanda (ordinario)', 20],
@@ -528,6 +773,11 @@ const I = {
   info: '<svg width="28" height="28" viewBox="0 0 48 48"><circle cx="24" cy="24" r="19" fill="url(#gTeal)"/><rect x="21.5" y="21" width="5" height="15" rx="2.5" fill="#fff"/><circle cx="24" cy="14.5" r="3" fill="#fff"/></svg>',
   phone: '<svg width="28" height="28" viewBox="0 0 48 48"><rect x="13" y="4" width="22" height="40" rx="6" fill="url(#gPink)"/><rect x="17" y="10" width="14" height="24" rx="2" fill="#fff" opacity=".9"/><circle cx="24" cy="38.5" r="2" fill="#fff"/></svg>',
   refresh: '<svg width="28" height="28" viewBox="0 0 48 48"><path d="M38 20a15 15 0 10-2 13" fill="none" stroke="url(#gBlue)" stroke-width="5" stroke-linecap="round"/><path d="M40 8v13H27z" fill="url(#gBlue)"/></svg>',
+  eye: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+  sparkle: '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M10 2.5l1.7 4.8 4.8 1.7-4.8 1.7L10 15.5l-1.7-4.8L3.5 9l4.8-1.7zM18 13l.9 2.6 2.6.9-2.6.9L18 20l-.9-2.6-2.6-.9 2.6-.9z"/></svg>',
+  sparkleC: '<svg width="32" height="32" viewBox="0 0 48 48"><path d="M20 4l3.6 10.4L34 18l-10.4 3.6L20 32l-3.6-10.4L6 18l10.4-3.6z" fill="url(#gPink)"/><path d="M36 26l1.9 5.1L43 33l-5.1 1.9L36 40l-1.9-5.1L29 33l5.1-1.9z" fill="url(#gViolet)"/><circle cx="37" cy="10" r="3" fill="url(#gOrange)"/></svg>',
+  key: '<svg width="28" height="28" viewBox="0 0 48 48"><circle cx="16" cy="24" r="10" fill="url(#gOrange)"/><circle cx="16" cy="24" r="4" fill="#fff"/><path d="M25 22h17v5h-4v5h-5v-5h-8z" fill="url(#gOrange)"/></svg>',
+  exit: '<svg width="28" height="28" viewBox="0 0 48 48"><rect x="6" y="6" width="24" height="36" rx="6" fill="url(#gRed)"/><path d="M24 24h18M35 17l7 7-7 7" fill="none" stroke="#E5335A" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   check: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
   trash: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13"/></svg>',
   upload: '<svg width="56" height="56" viewBox="0 0 48 48"><path d="M13 5h15l11 11v24a4 4 0 01-4 4H13a4 4 0 01-4-4V9a4 4 0 014-4z" fill="url(#gPink)"/><path d="M28 5v8a3 3 0 003 3h8z" fill="#FFC4EA"/><path d="M24 36V22M18 28l6-6 6 6" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -545,7 +795,8 @@ const back = () => { if (history.state && history.state.name !== 'home' && histo
 /* ---------- pantallas ---------- */
 function render() {
   const v = S.view, app = $('#app');
-  const views = { home: vHome, nuevo: vNuevo, plazo: vPlazo, calendario: vCalendario, abogados: vAbogados, festivos: vFestivos, perfil: vPerfil, ayuda: vAyuda, copia: vCopia };
+  if (nubeActiva() && !N.ses) { app.innerHTML = vLogin(); $('#navwrap').innerHTML = ''; return; }
+  const views = { home: vHome, nuevo: vNuevo, plazo: vPlazo, calendario: vCalendario, abogados: vAbogados, festivos: vFestivos, perfil: vPerfil, ayuda: vAyuda, copia: vCopia, clave: vClave, redactar: vRedactar };
   if (v.name === 'plazo' && !findPlazo(v.id)) { S.view = { name: 'home' }; return render(); }
   app.innerHTML = (views[v.name] || vHome)();
   $('#navwrap').innerHTML = (v.name === 'home' || v.name === 'calendario') ? navHTML(v.name) : '';
@@ -600,6 +851,7 @@ function vHome() {
       <div class="row"><div class="gicon">${I.doc(34)}</div><div><h2>Mis plazos</h2><p>${pend.length === 1 ? '1 pendiente' : pend.length + ' pendientes'}${prox ? (prox.e.c.vence <= hoy() ? ' · hay que mirar uno hoy' : ` · el próximo, ${fCorta(prox.e.c.vence)}`) : ''}</p></div></div>
       <div class="gbar"><i style="width:${pctSem}%"></i></div>
       <div class="gcap">${semana.length ? `Esta semana: ${hechosSem} de ${semana.length} hechos` : 'No vence nada en los próximos 7 días'}</div>
+      ${syncHTML()}
     </div>
     ${waveSVG()}
   </section>
@@ -664,8 +916,10 @@ function extractHTML(x) {
   if (x.error) return `<div class="found warn err"><b>No he podido leer el texto.</b> ${esc(x.error)} Rellena los datos a mano, el PDF se guarda igualmente.</div>`;
   const items = [['Juzgado', x.organo], ['Procedimiento', x.procedimiento], ['Partes', x.cliente], ['Resolución', x.resolucion], ['Recibida', x.recepcion ? `${fNum(x.recepcion.fecha)}${x.recepcion.hora ? ' a las ' + x.recepcion.hora : ''}` : ''], ['Plazo', x.plazo ? `${x.plazo.cantidad} ${x.plazo.unidad === 'meses' ? 'meses' : 'días'}` : '']].filter(i => i[1]);
   if (!items.length) return `<div class="found warn"><b>He abierto el PDF pero no encuentro los datos.</b> Puede que sea una imagen escaneada. Rellénalos a mano.</div>`;
+  const escrito = x.tipoDoc === 'escrito' ? `<div class="warn" style="margin-top:14px"><b>Esto parece un escrito vuestro</b>, no una notificación del juzgado, así que no abre plazo por sí mismo. Puedes guardarlo para tenerlo localizado (pon el plazo que quieras vigilar) o volver atrás.</div>` : '';
+  const recursos = x.recursos && x.recursos.length ? `<div style="margin-top:10px;color:var(--muted)">Según el modo de impugnación:</div><div class="chips" style="margin-top:8px">${x.recursos.map(rc => `<button class="chip" data-act="accion" data-n="${esc(rc.nombre)}" data-d="${rc.cantidad}">${esc(rc.nombre)}<small>${rc.cantidad} días</small></button>`).join('')}</div>` : '';
   return `<div class="found"><b>✓ He encontrado:</b><br>${items.map(([k, v]) => `${k}: <b style="color:inherit">${esc(v)}</b>`).join('<br>')}
-    ${x.plazo && x.plazo.frase ? `<q>«…${esc(x.plazo.frase)}…»</q>` : ''}<div style="margin-top:8px;color:var(--muted)">Revísalo, por si acaso.</div></div>`;
+    ${x.plazo && x.plazo.frase ? `<q>«…${esc(x.plazo.frase)}…»</q>` : ''}${recursos}<div style="margin-top:8px;color:var(--muted)">Revísalo, por si acaso.</div></div>${escrito}`;
 }
 function pintaCalculo() {
   const el = $('#calc'); if (!el || !S.draft) return;
@@ -698,7 +952,7 @@ function vPlazo() {
       <button class="act" data-act="avisar"><span class="ab">${I.mail}</span>Avisar al abogado</button>
       <button class="act" data-act="verPdf"><span class="ab">${I.doc(32)}</span>${p.pdfName ? 'Ver PDF' : 'Sin PDF'}</button>
       <button class="act" data-act="ics"><span class="ab">${I.ics}</span>A mi calendario</button>
-      <button class="act" data-act="editar"><span class="ab">${I.edit}</span>Cambiar datos</button>
+      <button class="act" data-act="iaPlazo"><span class="ab">${I.sparkleC}</span>Redactar con IA</button>
     </div>
     <button class="btn ${p.hecho ? 'soft' : 'green'}" data-act="hecho">${p.hecho ? 'Volver a ponerlo pendiente' : I.check + ' Marcar como hecho'}</button>
     <div style="height:22px"></div>
@@ -802,6 +1056,105 @@ function vFestivos() {
   </section>`;
 }
 
+/* ---- cuenta ---- */
+function vLogin() {
+  const crear = S.lgModo === 'crear';
+  return `<section class="hero login"><div class="lg-logo">${I.logo(58)}</div><h1 class="lg-t">Mis Plazos</h1><p class="lg-s">Tu agenda de plazos, en todos tus dispositivos</p>${waveSVG()}</section>
+  <section class="sec"><div class="card">
+    <div class="seg"><button data-act="lgModo" data-v="entrar" class="${crear ? '' : 'on'}">Entrar</button><button data-act="lgModo" data-v="crear" class="${crear ? 'on' : ''}">Crear cuenta</button></div>
+    <form id="lg-form" novalidate>
+      <label class="lb" for="lg-e">Correo electrónico</label>
+      <input class="inp" id="lg-e" type="email" inputmode="email" autocomplete="email" autocapitalize="off" placeholder="tucorreo@ejemplo.com" value="${esc(S.lgEmail)}">
+      <label class="lb" for="lg-p">${crear ? 'Elige una contraseña<small>Mínimo 6 caracteres. Apúntala en un sitio seguro.</small>' : 'Contraseña'}</label>
+      <div class="pass"><input class="inp" id="lg-p" type="password" autocomplete="${crear ? 'new-password' : 'current-password'}" placeholder="${crear ? 'Tu nueva contraseña' : 'Tu contraseña'}"><button type="button" class="eye" data-act="ojo" aria-label="Ver la contraseña">${I.eye}</button></div>
+      <div id="lg-msg" role="alert"></div>
+      <div style="height:18px"></div><button class="btn" type="submit" id="lg-ok">${crear ? 'Crear mi cuenta' : 'Entrar'}</button>
+    </form>
+    ${crear ? '' : '<button class="linkbtn" data-act="olvido">¿Has olvidado la contraseña?</button>'}
+  </div>
+  <p class="lg-nota">Con tu cuenta verás los mismos plazos en el móvil, la tablet o el ordenador. Sin cobertura también funciona: los cambios se guardan en la cuenta en cuanto vuelve la conexión.</p></section>`;
+}
+function vClave() {
+  return `<section class="hero compact">${topbar('Nueva contraseña')}${waveSVG()}</section>
+  <section class="sec"><div class="card"><h3>Elige tu nueva contraseña</h3><p class="sub">Mínimo 6 caracteres. Desde ahora entrarás con ella en todos tus dispositivos.</p>
+    <div class="pass"><input class="inp" id="cl-p" type="password" autocomplete="new-password" placeholder="Nueva contraseña" aria-label="Nueva contraseña"><button type="button" class="eye" data-act="ojo" aria-label="Ver la contraseña">${I.eye}</button></div>
+    <div style="height:18px"></div><button class="btn" data-act="guardarClave">Guardar contraseña</button></div></section>`;
+}
+
+/* ---- redactar correos con IA (función «redactar» de Supabase, que llama a Claude) ---- */
+const IDEAS_IA = ['Darle traslado de la notificación y del plazo', 'Recordarle que el plazo vence pronto', 'Pedirle instrucciones para preparar el escrito',
+  'Confirmar que el escrito ya está presentado', 'Avisar de un señalamiento o una vista', 'Pedir al cliente la provisión de fondos'];
+function nuevaIA(plazoId, idea) {
+  const p = findPlazo(plazoId);
+  return { plazoId: plazoId || '', para: p && p.abogadoId || '', peticion: idea || '', tono: 'cercano', conPdf: true, resultado: null, cargando: false, error: '' };
+}
+function contextoIA(p, para) {
+  const ab = findAbogado(para), c = p && calcular(p), l = [];
+  if (ab) l.push(`Destinatario: ${ab.nombre} (abogado del asunto)`);
+  if (p) {
+    if (p.organo) l.push(`Juzgado: ${p.organo}`); if (p.procedimiento) l.push(`Procedimiento: ${p.procedimiento}`); if (p.nig) l.push(`NIG: ${p.nig}`);
+    if (p.cliente) l.push(`Partes / cliente: ${p.cliente}`); if (p.resolucion) l.push(`Resolución notificada: ${p.resolucion}`);
+    if (p.actuacion) l.push(`Trámite: ${p.actuacion}`);
+    l.push(`Recibida en LexNET: ${fLargaY(p.recepcion)}`, `Plazo: ${p.cantidad} ${p.unidad === 'meses' ? 'meses' : 'días hábiles'}`);
+    if (c) l.push(`Vence: ${fLargaY(c.vence)}`, `Se puede presentar hasta las 15:00 del ${fLargaY(c.gracia)}`);
+    if (p.hecho) l.push('Estado: ya está hecho'); if (p.notas) l.push(`Notas de la procuradora: ${p.notas}`);
+  }
+  l.push(`Firma: ${S.perfil.firma || S.perfil.nombre || 'la procuradora'}`);
+  return l.join('\n');
+}
+function vRedactar() {
+  const ia = S.ia || (S.ia = nuevaIA());
+  const p = findPlazo(ia.plazoId);
+  if (!nubeActiva() || !N.ses) return `<section class="hero compact">${topbar('Redactar con IA')}${waveSVG()}</section>
+    <section class="sec"><div class="card"><h3>Hace falta la cuenta</h3><p class="sub" style="margin:0">La IA funciona desde la app con tu cuenta iniciada (la dirección de la app, no la vista previa de claude.ai).</p></div></section>`;
+  const pend = S.plazos.filter(x => !x.hecho).concat(S.plazos.filter(x => x.hecho));
+  const r = ia.resultado;
+  return `<section class="hero compact">${topbar('Redactar con IA')}${waveSVG()}</section>
+  <section class="sec">
+    <div class="card"><h3><span class="step">1</span>¿Sobre qué asunto?</h3><p class="sub">Así la IA usa sus datos y las fechas ya calculadas.</p>
+      <select class="inp" id="ia-plazo" aria-label="Asunto"><option value="">— Ninguno en concreto —</option>${pend.map(x => `<option value="${x.id}"${x.id === ia.plazoId ? ' selected' : ''}>${esc((x.actuacion || 'Plazo') + ' · ' + (x.procedimiento || x.organo || fCorta(x.recepcion)))}</option>`).join('')}</select>
+      <label class="lb" for="ia-para">¿Para quién?</label>
+      <select class="inp" id="ia-para"><option value="">— Otra persona —</option>${S.abogados.map(a => `<option value="${a.id}"${a.id === ia.para ? ' selected' : ''}>${esc(a.nombre)}</option>`).join('')}</select>
+      ${p && p.pdfName ? `<div style="margin-top:14px"><button class="switch${ia.conPdf ? ' on' : ''}" data-act="iaPdf" role="switch" aria-checked="${ia.conPdf}"><span class="tog"></span><span><b>Leer también el PDF</b><small>La IA resume lo que acuerda la resolución.</small></span></button></div>` : ''}
+    </div>
+    <div class="card"><h3><span class="step">2</span>¿Qué quieres decir?</h3><p class="sub">Con tus palabras, o toca una idea.</p>
+      <textarea class="inp" id="ia-pet" placeholder="Ej.: dile que necesito el escrito antes del jueves">${esc(ia.peticion)}</textarea>
+      <div class="chips" style="margin-top:12px">${IDEAS_IA.map(t => `<button class="chip${ia.peticion === t ? ' on' : ''}" data-act="iaIdea" data-t="${esc(t)}">${esc(t)}</button>`).join('')}</div>
+      <label class="lb">Tono</label>
+      <div class="seg"><button data-act="iaTono" data-v="cercano" class="${ia.tono === 'cercano' ? 'on' : ''}">Cercano (de tú)</button><button data-act="iaTono" data-v="formal" class="${ia.tono === 'formal' ? 'on' : ''}">Formal (de usted)</button></div>
+    </div>
+    ${ia.error ? `<div class="warn err" style="margin-bottom:18px"><b>No se pudo redactar.</b> ${esc(ia.error)}</div>` : ''}
+    <button class="btn" data-act="iaRedactar"${ia.cargando ? ' disabled' : ''}>${ia.cargando ? '<span class="spin" style="border-top-color:#fff"></span> Redactando…' : I.sparkle + (r ? ' Escribir otra versión' : ' Redactar el correo')}</button>
+    ${r ? `<div style="height:20px"></div><div class="card" id="ia-res"><h3>Tu correo</h3><p class="sub">Revísalo y cámbialo si quieres antes de enviarlo.</p>
+      <label class="lb" for="ia-as">Asunto</label><input class="inp" id="ia-as" value="${esc(r.asunto)}">
+      <label class="lb" for="ia-cu">Texto</label><textarea class="inp" id="ia-cu" style="min-height:300px">${esc(r.cuerpo)}</textarea>
+      <div style="height:16px"></div>
+      <button class="btn" data-act="iaMail">${I.mail.replace('width="32" height="32"', 'width="26" height="26"')} Enviar por correo</button>
+      <button class="btn soft" data-act="iaShare">${I.share.replace('width="32" height="32"', 'width="26" height="26"')} Compartir${p && p.pdfName ? ' con el PDF' : ''}</button>
+      <button class="btn danger" data-act="iaCopy" style="color:var(--acc)">Copiar el texto</button></div>` : ''}
+    <p class="lg-nota" style="margin-top:18px">La IA puede equivocarse: léelo siempre antes de enviarlo. Las fechas de vencimiento las calcula la app, no la IA.</p>
+  </section>`;
+}
+async function redactarIA() {
+  const ia = S.ia; leerIA();
+  if (!ia.peticion.trim()) { ia.error = 'Escribe qué quieres decir o toca una de las ideas.'; return render(); }
+  ia.cargando = true; ia.error = ''; render();
+  try {
+    const p = findPlazo(ia.plazoId);
+    let resolucion = '';
+    if (p && p.pdfName && ia.conPdf) { const x = await obtenerPDF(p); if (x) { try { resolucion = (await textoPDF(x.blob)).slice(0, 20000); } catch { } } }
+    ia.resultado = await api('/functions/v1/redactar', { method: 'POST', body: { peticion: ia.peticion, tono: ia.tono, contexto: contextoIA(p, ia.para), resolucion } });
+  } catch (e) { ia.error = e.offline ? 'No hay conexión. Prueba cuando tengas cobertura.' : (e.status === 404 ? 'La IA todavía no está activada en el servidor (ver docs/CUENTA.md).' : e.message); }
+  ia.cargando = false;
+  if (S.view.name === 'redactar') { render(); const el = $('#ia-res'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+}
+function leerIA() {
+  const ia = S.ia; if (!ia) return;
+  const v = id => { const el = $(id); return el ? el.value : null; };
+  if (v('#ia-plazo') !== null) ia.plazoId = v('#ia-plazo'); if (v('#ia-para') !== null) ia.para = v('#ia-para'); if (v('#ia-pet') !== null) ia.peticion = v('#ia-pet');
+  if (ia.resultado && v('#ia-as') !== null) { ia.resultado.asunto = v('#ia-as'); ia.resultado.cuerpo = v('#ia-cu'); }
+}
+
 /* ---- mis datos ---- */
 function vPerfil() {
   return `<section class="hero compact">${topbar('Mis datos')}${waveSVG()}</section>
@@ -843,9 +1196,10 @@ function vCopia() {
 function drawer() {
   const item = (icon, label, attr) => `<button class="mi" ${attr}><span class="mb">${icon}</span>${label}</button>`;
   $('#ov').innerHTML = `<div class="backdrop" data-act="close"></div><nav class="drawer" aria-label="Menú">
-    <div class="brand"><div class="notch" style="background:linear-gradient(150deg,var(--deep1),var(--deep3))">${I.logo(30)}</div><div><b>Mis Plazos</b><small>Agenda de la procuradora</small></div></div>
+    <div class="brand"><div class="notch" style="background:linear-gradient(150deg,var(--deep1),var(--deep3))">${I.logo(30)}</div><div><b>Mis Plazos</b><small>${nubeActiva() && N.ses ? esc(N.ses.user.email) : 'Agenda de la procuradora'}</small></div></div>
     ${item(I.doc(28), 'Mis plazos', 'data-go="home"')}
     ${item(I.tPronto.replace(/width="46" height="46"/, 'width="28" height="28"'), 'Calendario', 'data-go="calendario"')}
+    ${item(I.sparkleC.replace('width="32" height="32"', 'width="28" height="28"'), 'Redactar con IA', 'data-act="iaNuevo"')}
     ${item(I.people, 'Abogados', 'data-go="abogados"')}
     ${item(I.flag, 'Festivos', 'data-go="festivos"')}
     ${item(I.user, 'Mis datos', 'data-go="perfil"')}
@@ -853,6 +1207,7 @@ function drawer() {
     ${item(I.info, 'Cómo se cuentan los plazos', 'data-go="ayuda"')}
     ${enArtefacto() || window.matchMedia('(display-mode: standalone)').matches ? '' : item(I.phone, 'Instalar en el móvil', 'data-act="instalar"')}
     ${enArtefacto() ? '' : item(I.refresh, 'Buscar actualización', 'data-act="actualizar"')}
+    ${nubeActiva() && N.ses ? item(I.key, 'Cambiar contraseña', 'data-go="clave"') + item(I.exit, 'Cerrar sesión', 'data-act="salir"') : ''}
     <div class="ver">Mis Plazos · ${VERSION}</div></nav>`;
 }
 function sheet(html) { $('#ov').innerHTML = `<div class="backdrop" data-act="close"></div><div class="sheet" role="dialog" aria-modal="true"><div class="grab"></div><button class="sclose" data-act="close" aria-label="Cerrar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>${html}</div>`; }
@@ -880,39 +1235,81 @@ async function textoPDF(file) {
   }
   return txt.replace(/[ \t\u00a0]+/g, ' ');
 }
-const NUMS = { un: 1, uno: 1, una: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10, once: 11, doce: 12, trece: 13, catorce: 14, quince: 15,
+const NUMS = { un: 1, uno: 1, una: 1, 'veintiún': 21, veintiuno: 21, 'veintidós': 22, veintidos: 22, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10, once: 11, doce: 12, trece: 13, catorce: 14, quince: 15,
   'dieciséis': 16, dieciseis: 16, diecisiete: 17, dieciocho: 18, diecinueve: 19, veinte: 20, veinticinco: 25, treinta: 30, cuarenta: 40, sesenta: 60 };
-const capitaliza = s => /[a-záéíóúñ]/.test(s) ? s : s.toLowerCase().replace(/(^|[\s(/-])([a-záéíóúñ])/g, (m, a, b) => a + b.toUpperCase()).replace(/\b(De|Del|La|Las|Los|El|Y|En|Contra)\b/g, w => w.toLowerCase()).replace(/\bNº\b|\bN\.º/gi, 'nº').replace(/\b([a-z])\.\s?([a-z])\b\.?/gi, (m, a, b) => `${a.toUpperCase()}.${b.toUpperCase()}.`);
+const capitaliza = s => {
+  // Pasa a tipo título lo que venga en MAYÚSCULAS (aunque lleve alguna «y» o «de» en minúscula) y deja lo demás como está.
+  const may = (s.match(/[A-ZÁÉÍÓÚÑ]/g) || []).length, min = (s.match(/[a-záéíóúñ]/g) || []).length;
+  if (may > min * 3) s = s.toLowerCase().replace(/(^|[\s(/-])([a-záéíóúñ])/g, (m, a, b) => a + b.toUpperCase()).replace(/\b(De|Del|La|Las|Los|El|Y|E|En|Contra)\b/g, w => w.toLowerCase()).replace(/\bNº\b|\bN\.º/gi, 'nº');
+  return s.replace(/\b([a-z])\.\s?([a-z])\b\.?/gi, (m, a, b) => `${a.toUpperCase()}.${b.toUpperCase()}.`);
+};
 const limpia = s => (s || '').replace(/\s+/g, ' ').replace(/^[\s:.,-]+|[\s:.,-]+$/g, '').trim();
-// Saca de un texto de notificación lo que pueda: juzgado, procedimiento, NIG, partes, resolución, plazo y fecha de LexNET.
+// Quita tratamientos delante de los nombres: «D./Dª.», «D/ña.», «Dña.», «D . », «Don», «Doña»…
+const sinTratamiento = s => s.replace(/(^|\s|\/|,|\by\b)\s*(?:D\/ña|Dña|D\.ª|Dª|D)\s?\.\s?(?:\/\s*(?:D\/ña|Dña|D\.ª|Dª|D)\s?\.?\s?)?/gi, '$1 ').replace(/(^|\s)(?:Don|Doña)\s+/gi, '$1').replace(/^\s*\/\s*/, '');
+// Saca de una notificación (o de un escrito) lo que pueda: juzgado, procedimiento, NIG, partes, resolución, plazo,
+// los recursos posibles y la fecha de LexNET. Probado con resoluciones del Tribunal de Instancia (GVA) y carátulas de LexNET.
 function extraer(txt) {
-  const r = {}; const t = txt || '';
-  let m = t.match(/((?:JUZGADO|Juzgado|TRIBUNAL|Tribunal|AUDIENCIA|Audiencia)\s+(?:DE|de|SUPERIOR|Superior|PROVINCIAL|Provincial|NACIONAL|Nacional|MERCANTIL|Mercantil|DECANO|Decano)[^\n]{3,90})/);
-  if (m) r.organo = capitaliza(limpia(m[1].split(/\s{2,}|\bN\.?I\.?G\b|\bTel[eé]f|\bTfno|\bC\/|\bCalle\b|\bAvda?\b/i)[0]));
-  m = t.match(/(?:Procedimiento|PROCEDIMIENTO|Autos|AUTOS|Asunto|ASUNTO)\s*:?\s*([^\n]{0,70}?\d{1,7}\s*\/\s*\d{2,4})/) || t.match(/\b([A-ZÁÉÍÓÚ][A-Za-zÁÉÍÓÚáéíóúñÑ. ]{2,45}?\s+(?:n[ºo°.]*\s*)?\d{1,7}\s*\/\s*\d{4})\b/);
-  if (m) r.procedimiento = capitaliza(limpia(m[1])).replace(/\s*\/\s*/, '/');
+  const r = {}; const t = (txt || '').replace(/\r/g, '');
+  // ¿Es un escrito de la propia procuradora y no una notificación del juzgado?
+  if (/Procurador[a]?\s+de\s+los\s+Tribunales/i.test(t) && /\b(?:comparezco|DIGO\s*:|SUPLICO)/i.test(t)) r.tipoDoc = 'escrito';
+  // Juzgado o tribunal: formato nuevo «Sección … del Tribunal de Instancia de X. Plaza nº N» (a veces en dos líneas)
+  let m = t.match(/(SECCI[OÓ]N\s[^\n]{0,90}?(?:\n[^\n]{0,60}?)?PLAZA\s*N\s*[º°o.]?\s*\d+)/i)
+    || t.match(/((?:JUZGADO|TRIBUNAL|AUDIENCIA)\s+(?:DE|SUPERIOR|PROVINCIAL|NACIONAL|MERCANTIL|DECANO)[^\n]{3,90})/i);
+  if (m) r.organo = capitaliza(limpia(m[1].split(/\s{3,}|\bN\.?I\.?G\b|\bTel[eé]f|\bTlfno|\bTfno|\bC\/|\bCalle\b|\bAvda?\b/i)[0].replace(/\s+\./g, '.')))
+    .replace(/^A\s+L\s?a\s+/i, '').replace(/\bPlaza\s*n\s*[º°o.]?\s*(\d+)/i, 'Plaza nº $1');
+  // Procedimiento
+  m = t.match(/Tipo\s+y\s+n[úu]mero\s+de\s+procedimiento\s*:\s*([^\n]{2,80}?\d{1,7}\s*\/\s*\d{2,4})/i)
+    || t.match(/\b((?:Juicio|Procedimiento|Proced\.|Procd?to\.?|Ejecuci[oó]n|Ejecutoria|Concurso|Diligencias|Recurso|Monitorio|Verbal|Ordinario|Sumario|Expediente|Pieza|Rollo)[^\n]{0,55}?\d{1,7}\s*\/\s*\d{2,4})\b/i)
+    || t.match(/(?:Autos|Asunto)\s*:?\s*([^\n]{0,60}?\d{1,7}\s*\/\s*\d{2,4})/i);
+  if (m) r.procedimiento = capitaliza(limpia(m[1].replace(/^(?:Procedimiento|Autos|Asunto)\s*:\s*/i, ''))).replace(/\s*\/\s*/, '/').replace(/\bn\s*º\s*/gi, 'nº ').replace(/^./, c => c.toUpperCase());
   m = t.match(/N\.?\s?I\.?\s?G\.?\s*:?\s*([0-9][0-9 ]{10,24}[0-9])/i);
   if (m) r.nig = m[1].replace(/\s+/g, '');
-  const parte = re => { const x = t.match(re); return x ? capitaliza(limpia(x[1].replace(/^(?:D\/?ña\.?|D\.ª|D\.|Dña\.?|Don|Doña)\s*/i, '').split(/\s{2,}|Procurador|PROCURADOR|Abogado|ABOGADO|Letrad/)[0])) : ''; };
-  const a = parte(/(?:DEMANDANTE|EJECUTANTE|RECURRENTE|APELANTE|SOLICITANTE)S?\s*(?:\(S\))?\s*:?\s*([^\n]{3,80})/i);
-  const b = parte(/(?:DEMANDADO|EJECUTADO|RECURRIDO|APELADO)S?\s*(?:\(S\))?\s*:?\s*([^\n]{3,80})/i);
+  // Partes
+  const parte = re => { const x = t.match(re); return x ? capitaliza(limpia(sinTratamiento(x[1]).split(/\s{3,}|Procurador|Abogad|Letrad/i)[0])) : ''; };
+  const a = parte(/(?:^|\n)\s*(?:DEMANDANTE|EJECUTANTE|RECURRENTE|APELANTE|SOLICITANTE|DENUNCIANTE|QUERELLANTE|ACUSACI[OÓ]N PARTICULAR)S?\s*(?:\(S\))?\s*:?\s*([^\n]{3,90})/i);
+  const b = parte(/(?:^|\n)\s*(?:DEMANDADO|EJECUTADO|RECURRIDO|APELADO|DENUNCIADO|ACUSADO|INVESTIGADO|QUERELLADO|CONDENADO)S?\s*(?:\(S\))?\s*:?\s*([^\n]{3,90})/i);
   if (a || b) r.cliente = [a, b].filter(Boolean).join(' contra ');
-  m = t.match(/\b(DILIGENCIA DE ORDENACI[OÓ]N|DECRETO|PROVIDENCIA|AUTO|SENTENCIA|C[EÉ]DULA DE (?:NOTIFICACI[OÓ]N|EMPLAZAMIENTO|CITACI[OÓ]N)|EMPLAZAMIENTO|REQUERIMIENTO)\b/);
-  if (m) r.resolucion = capitaliza(m[1]);
-  m = t.match(/(?:plazo|t[eé]rmino)\s+(?:com[uú]n\s+|improrrogable\s+|legal\s+|m[aá]ximo\s+)?de\s+([a-záéíóúñ]+|\d{1,3})\s*(?:\(\s*\d{1,3}\s*\)\s*)?(d[ií]as|mes(?:es)?)/i);
-  if (m) {
-    const w = m[1].toLowerCase(), n = /^\d+$/.test(w) ? +w : NUMS[w];
-    if (n) { const i = m.index; r.plazo = { cantidad: n, unidad: /^mes/i.test(m[2]) ? 'meses' : 'dias', frase: limpia(t.slice(Math.max(0, i - 90), i + m[0].length + 40)) }; }
+  if (r.tipoDoc === 'escrito') { // en un escrito, el cliente es quien ella representa
+    m = t.match(/Procurador[a]?\s+de\s+los\s+Tribunales,?\s+(?:en\s+nombre\s+y\s+representaci[oó]n\s+de|y\s+de)\s+([\s\S]{3,160}?)(?:,\s*seg[uú]n|,\s*ante|,\s*como|\s+ante\s+el)/i);
+    if (m) r.cliente = capitaliza(limpia(sinTratamiento(m[1].replace(/\s+/g, ' '))));
   }
+  // Tipo de resolución: el título suelto en su línea («DILIGENCIA DE ORDENACIÓN», «A U T O»…)
+  const RES = /^(DILIGENCIA DE ORDENACI[OÓ]N|DECRETO|PROVIDENCIA|AUTO|SENTENCIA|C[EÉ]DULA DE (?:NOTIFICACI[OÓ]N|EMPLAZAMIENTO|CITACI[OÓ]N|REQUERIMIENTO)|EMPLAZAMIENTO|REQUERIMIENTO)\b/;
+  for (const linea of t.split('\n')) {
+    let l = linea.trim();
+    if (/^(?:[A-ZÁÉÍÓÚÑ]\s){2,}[A-ZÁÉÍÓÚÑ]$/.test(l)) l = l.replace(/\s/g, '');
+    m = l.match(RES); if (m && l.length < 60) { r.resolucion = capitaliza(m[1]); break; }
+  }
+  // Plazo que da la propia resolución («se concede un plazo de dos días para subsanar…»)
+  const num = w => /^\d+$/.test(w) ? +w : NUMS[w.toLowerCase()];
+  m = t.match(/(?:plazo|t[eé]rmino)\s+(?:com[uú]n\s+|improrrogable\s+|legal\s+|m[aá]ximo\s+)?de\s+([a-záéíóúñ]+|\d{1,3})\s*(?:\(\s*\d{1,3}\s*\)\s*)?(d[ií]as|mes(?:es)?)/i);
+  const enImpugnacion = i => /MODO DE IMPUGNACI[OÓ]N|RECURSO DE/i.test(t.slice(Math.max(0, i - 220), i));
+  if (m && num(m[1]) && !(enImpugnacion(m.index) && r.tipoDoc !== 'escrito'))
+    r.plazo = { cantidad: num(m[1]), unidad: /^mes/i.test(m[2]) ? 'meses' : 'dias', frase: limpia(t.slice(Math.max(0, m.index - 90), m.index + m[0].length + 40)) };
+  // Recursos posibles según el «modo de impugnación»
+  const imp = t.search(/MODO DE IMPUGNACI[OÓ]N|Contra (?:esta|la presente) resoluci[oó]n/i);
+  if (imp >= 0) {
+    const zona = t.slice(imp, imp + 900).replace(/\s+/g, ' '), vistos = new Set(); r.recursos = [];
+    const re = /recurso\s+de\s+([a-záéíóúñ]+)(?:[^.]{0,140}?)(?:plazo\s+de|dentro\s+de\s+los?|en\s+el\s+t[eé]rmino\s+de)\s+([a-záéíóúñ]+|\d{1,2})\s+d[ií]as/gi;
+    let q; while ((q = re.exec(zona))) {
+      const n = num(q[2]), nombre = 'Recurso de ' + q[1].toLowerCase();
+      if (n && !vistos.has(nombre)) { vistos.add(nombre); r.recursos.push({ nombre, cantidad: n }); }
+      re.lastIndex = q.index + 15;
+    }
+    if (!r.recursos.length) delete r.recursos;
+  }
+  if (r.tipoDoc === 'escrito') { delete r.plazo; delete r.recursos; delete r.resolucion; }
+  // Qué hay que hacer
   if (r.plazo) {
     const ctx = r.plazo.frase.toLowerCase();
-    const verbo = [[/apelaci/, 'Recurso de apelación'], [/reposici/, 'Recurso de reposición'], [/revisi[oó]n/, 'Recurso de revisión'], [/contest/, 'Contestar demanda'], [/oposici/, 'Oposición'],
-      [/impugn/, 'Impugnar'], [/subsan/, 'Subsanar'], [/alega/, 'Alegaciones'], [/aleg|manifest/, 'Manifestar lo que convenga'], [/traslado/, 'Traslado']].find(([re]) => re.test(ctx));
+    const verbo = [[/subsan/, 'Subsanar'], [/apelaci/, 'Recurso de apelación'], [/reposici/, 'Recurso de reposición'], [/revisi[oó]n/, 'Recurso de revisión'], [/contest/, 'Contestar demanda'], [/oposici/, 'Oposición'],
+      [/impugn/, 'Impugnar'], [/alega/, 'Alegaciones'], [/manifest/, 'Manifestar lo que convenga'], [/cita|testig|perit/, 'Indicar personas a citar'], [/aport|acredit/, 'Aportar documentación'], [/traslado/, 'Traslado']].find(([re]) => re.test(ctx));
     r.actuacion = verbo ? verbo[1] : (r.resolucion ? r.resolucion + ': plazo' : '');
-  } else if (r.resolucion === 'Sentencia') r.actuacion = 'Sentencia: valorar recurso';
-  // carátula de LexNET: «Fecha-hora envío: 13/10/2026 10:23» o «Fecha recepción…»
+  } else if (r.recursos) { r.actuacion = r.recursos[0].nombre + ' (si se recurre)'; r.plazo = { cantidad: r.recursos[0].cantidad, unidad: 'dias', frase: '' }; }
+  else if (r.resolucion === 'Sentencia') r.actuacion = 'Sentencia: valorar recurso';
+  // Carátula de LexNET: «Fecha-hora envío: 13/10/2026 10:23» o «Fecha recepción…»
   m = t.match(/(?:recepci[oó]n|recibid[oa]|env[ií]o|entrada)[^0-9\n]{0,40}(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})(?:[^0-9\n]{1,6}(\d{1,2}):(\d{2}))?/i);
-  if (m) { const f = `${m[3]}-${pad(m[2])}-${pad(m[1])}`; if (validFecha(f) && +m[2] <= 12) r.recepcion = { fecha: f, hora: m[4] ? `${pad(m[4])}:${m[5]}` : '' }; }
+  if (m && r.tipoDoc !== 'escrito') { const f = `${m[3]}-${pad(m[2])}-${pad(m[1])}`; if (validFecha(f) && +m[2] <= 12) r.recepcion = { fecha: f, hora: m[4] ? `${pad(m[4])}:${m[5]}` : '' }; }
   return r;
 }
 async function onPDF(file) {
@@ -925,6 +1322,7 @@ async function onPDF(file) {
     if (!S.draft || S.draft.id !== d.id) return;
     d._extract = x;
     for (const k of ['organo', 'procedimiento', 'nig', 'cliente', 'resolucion', 'actuacion']) if (x[k] && !d[k]) d[k] = x[k];
+    if (x.tipoDoc === 'escrito' && !d.actuacion) d.actuacion = 'Escrito presentado';
     if (x.plazo) { d.cantidad = x.plazo.cantidad; d.unidad = x.plazo.unidad; }
     if (x.recepcion) { d.recepcion = x.recepcion.fecha; if (x.recepcion.hora) d.hora = x.recepcion.hora >= '15:00' ? 'despues' : 'antes'; }
   } catch (err) { console.error(err); d._extract = { error: 'Puede que el archivo esté protegido o dañado.' }; }
@@ -945,8 +1343,9 @@ function textoAviso(p) {
 }
 async function avisarSheet(p) {
   const ab = findAbogado(p.abogadoId), { asunto, cuerpo } = textoAviso(p);
-  const pdf = p.pdfName ? await Store.getPDF(p.id) : null;
+  const pdf = await obtenerPDF(p);
   sheet(`<h3>Avisar ${ab ? 'a ' + esc(ab.nombre) : 'al abogado'}</h3><p>Puedes cambiar el texto antes de enviarlo.</p>
+    ${nubeActiva() && N.ses ? `<button class="btn soft" data-act="iaPlazo" style="margin-bottom:14px">${I.sparkle} Que lo redacte la IA</button>` : ''}
     ${S.abogados.length ? `<select class="inp" id="av-ab" aria-label="Abogado"><option value="">— Elegir abogado —</option>${S.abogados.map(a => `<option value="${a.id}"${a.id === p.abogadoId ? ' selected' : ''}>${esc(a.nombre)}</option>`).join('')}</select><div style="height:12px"></div>` : ''}
     <textarea class="inp" id="av-t" rows="12" style="min-height:240px">${esc(cuerpo)}</textarea>
     <div style="height:16px"></div>
@@ -1075,11 +1474,11 @@ document.addEventListener('click', async e => {
       return go({ name: 'plazo', id: plazo.id }, true);
     }
     case 'hecho': p.hecho = !p.hecho; p.hechoEn = p.hecho ? Date.now() : null; await savePlazo(p); toast(p.hecho ? '¡Hecho! Bien' : 'Vuelve a estar pendiente'); return render();
-    case 'borrar': if (!(await confirmar('¿Borrar este plazo?', 'No se puede deshacer.', 'Borrar'))) return; await Store.del(p.id); await Store.delPDF(p.id).catch(() => {}); S.plazos = S.plazos.filter(x => x.id !== p.id); toast('Plazo borrado'); return go({ name: 'home' }, true);
+    case 'borrar': if (!(await confirmar('¿Borrar este plazo?', 'No se puede deshacer.', 'Borrar'))) return; await Store.del(p.id); await Store.delPDF(p.id).catch(() => {}); S.plazos = S.plazos.filter(x => x.id !== p.id); marcar('plazo:' + p.id); toast('Plazo borrado'); return go({ name: 'home' }, true);
     case 'avisar': return avisarSheet(p);
     case 'verPdf': {
       if (!p.pdfName) return toast('Este plazo no tiene PDF. Puedes añadirlo creando una notificación nueva.');
-      const x = await Store.getPDF(p.id); if (!x) return toast('No encuentro el PDF');
+      const x = await obtenerPDF(p); if (!x) return;
       const url = URL.createObjectURL(x.blob); const w = window.open(url, '_blank'); if (!w) await deliver(x.blob, x.name || 'notificacion.pdf'); setTimeout(() => URL.revokeObjectURL(url), 60000); return;
     }
     case 'ics': return deliver(new Blob([icsArchivo([icsEvento(p)])], { type: 'text/calendar' }), `plazo-${(p.procedimiento || p.actuacion || 'plazo').replace(/[^\w-]+/g, '-')}.ics`);
@@ -1095,6 +1494,29 @@ document.addEventListener('click', async e => {
     }
     case 'delFest': S.festivos = S.festivos.filter(x => x.fecha !== b.dataset.d); await saveKV('festivos'); return render();
     case 'guardarPerfil': S.perfil.nombre = $('#pf-n').value.trim(); S.perfil.firma = $('#pf-f').value.trim(); await saveKV('perfil'); toast('Guardado'); return back();
+    case 'lgModo': S.lgModo = b.dataset.v; S.lgEmail = ($('#lg-e') || {}).value || S.lgEmail; return render();
+    case 'ojo': { const i = $('#lg-p') || $('#cl-p'); i.type = i.type === 'password' ? 'text' : 'password'; b.setAttribute('aria-label', i.type === 'password' ? 'Ver la contraseña' : 'Ocultar la contraseña'); return; }
+    case 'olvido': S.lgEmail = ($('#lg-e') || {}).value || S.lgEmail; return olvidoSheet();
+    case 'salir': closeOverlay(); return salir();
+    case 'guardarClave': {
+      const pw = $('#cl-p').value; if (pw.length < 6) return toast('Mínimo 6 caracteres');
+      try { await api('/auth/v1/user', { method: 'PUT', body: { password: pw } }); toast('Contraseña cambiada'); return go({ name: 'home' }, true); } catch (e) { return toast(errorCuenta(e)); }
+    }
+    case 'iaNuevo': S.ia = nuevaIA(); return go({ name: 'redactar' });
+    case 'iaPlazo': { const pl = p || findPlazo(S.view.id); S.ia = nuevaIA(pl && pl.id, IDEAS_IA[0]); return go({ name: 'redactar' }); }
+    case 'iaIdea': leerIA(); S.ia.peticion = b.dataset.t; $('#ia-pet').value = S.ia.peticion; document.querySelectorAll('[data-act="iaIdea"]').forEach(x => x.classList.toggle('on', x === b)); return;
+    case 'iaTono': S.ia.tono = b.dataset.v; b.parentNode.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); return;
+    case 'iaPdf': S.ia.conPdf = !S.ia.conPdf; b.classList.toggle('on', S.ia.conPdf); b.setAttribute('aria-checked', S.ia.conPdf); return;
+    case 'iaRedactar': return redactarIA();
+    case 'iaMail': { leerIA(); const r = S.ia.resultado, a = findAbogado(S.ia.para); location.href = `mailto:${encodeURIComponent(a && a.email || '')}?subject=${encodeURIComponent(r.asunto)}&body=${encodeURIComponent(r.cuerpo)}`; const pl = findPlazo(S.ia.plazoId); if (pl && a) { pl.trasladado = hoy(); await savePlazo(pl); } return; }
+    case 'iaShare': {
+      leerIA(); const r = S.ia.resultado, pl = findPlazo(S.ia.plazoId), data = { title: r.asunto, text: r.cuerpo };
+      const pdf = pl && pl.pdfName ? await obtenerPDF(pl) : null;
+      if (pdf) { const f = new File([pdf.blob], pdf.name || 'notificacion.pdf', { type: 'application/pdf' }); if (navigator.canShare && navigator.canShare({ files: [f] })) data.files = [f]; }
+      if (!navigator.share) { try { await navigator.clipboard.writeText(r.cuerpo); toast('Texto copiado'); } catch { toast('Tu navegador no permite compartir'); } return; }
+      try { await navigator.share(data); } catch (err) { if (!err || err.name !== 'AbortError') toast('No se pudo compartir'); } return;
+    }
+    case 'iaCopy': { leerIA(); try { await navigator.clipboard.writeText(S.ia.resultado.asunto + '\n\n' + S.ia.resultado.cuerpo); toast('Texto copiado'); } catch { toast('No se pudo copiar'); } return; }
     case 'exportar': return exportar();
     case 'importar': return $('#impIn').click();
     case 'instalar': closeOverlay(); return instalarSheet();
@@ -1112,6 +1534,8 @@ document.addEventListener('input', e => {
   if (f === 'cantidad' || f === 'actuacion') document.querySelectorAll('.chip').forEach(x => x.classList.toggle('on', x.dataset.n === S.draft.actuacion && +x.dataset.d === Number(S.draft.cantidad) && S.draft.unidad === 'dias'));
   if (f === 'recepcion' || f === 'cantidad') pintaCalculo();
 });
+document.addEventListener('change', e => { if (/^ia-(plazo|para)$/.test(e.target.id)) { leerIA(); if (e.target.id === 'ia-plazo') { const pl = findPlazo(S.ia.plazoId); if (pl && pl.abogadoId) S.ia.para = pl.abogadoId; } render(); } });
+document.addEventListener('submit', e => { if (e.target.id === 'lg-form') { e.preventDefault(); enviarLogin(); } });
 document.addEventListener('change', e => {
   if (e.target.id === 'pdfIn') onPDF(e.target.files[0]);
   if (e.target.id === 'impIn' && e.target.files[0]) importar(e.target.files[0]);
@@ -1126,9 +1550,20 @@ window.addEventListener('appinstalled', () => { installPrompt = null; toast('App
     S.abogados = (await Store.getKV('abogados')) || [];
     S.festivos = (await Store.getKV('festivos')) || [];
     const pf = await Store.getKV('perfil'); if (pf) S.perfil = { ...S.perfil, ...pf };
+    S.kvT = (await Store.getKV('kvT')) || {};
+    if (nubeActiva()) {
+      N.ses = (await Store.getKV('sesion')) || null; N.pend = (await Store.getKV('pendientes')) || {};
+      N.cursor = (await Store.getKV('cursor')) || 0; N.pdfOk = (await Store.getKV('pdfOk')) || {}; N.seq = Math.max(0, ...Object.values(N.pend));
+    }
   } catch (err) { console.error(err); toast('No se pudieron cargar los datos guardados'); }
   history.replaceState({ name: 'home' }, ''); render();
-  if (!S.perfil.visto && !S.plazos.length) bienvenida();
+  if (nubeActiva()) {
+    await enlaceCorreo();
+    if (N.ses) sincronizar().then(() => { if (!S.perfil.visto && !S.perfil.nombre && !$('#ov').innerHTML) bienvenida(); });
+    window.addEventListener('online', () => sincronizar());
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) sincronizar(); });
+    setInterval(() => { if (!document.hidden) sincronizar(); }, 60000);
+  } else if (!S.perfil.visto && !S.plazos.length) bienvenida();
   if (window.claude && typeof window.claude.use === 'function') { try { downloadsNS = await window.claude.use('downloads'); } catch { downloadsNS = null; } }
   if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !enArtefacto()) {
     navigator.serviceWorker.register('sw.js').then(reg => {

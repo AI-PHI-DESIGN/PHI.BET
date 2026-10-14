@@ -12,8 +12,15 @@ App para el móvil que ayuda a una procuradora a no perder ningún plazo:
 4. **Avisa al abogado** con un correo ya redactado, o por WhatsApp con el PDF adjunto.
 5. **Exporta al calendario del móvil** (.ics) con aviso a las 9:00 dos días antes y el día anterior.
 
-Todo se guarda **en el propio móvil** (no se envía a ningún servidor). Desde el menú se puede guardar una copia de
-seguridad y recuperarla.
+6. **Cuenta con correo y contraseña**: los mismos plazos (y sus PDF) en el móvil, la tablet y el ordenador. Funciona
+   sin cobertura y lo guarda en la cuenta al volver la conexión.
+7. **Redactar con IA**: escribe el correo al abogado o al cliente con los datos del asunto, el texto de la resolución y
+   las fechas calculadas por la app.
+8. Reconoce también **los escritos** que presenta ella (no les pone plazo) y, si la resolución no da plazo, ofrece los
+   recursos de su **modo de impugnación**.
+
+La cuenta y la IA necesitan un proyecto de Supabase: pasos en [`docs/CUENTA.md`](docs/CUENTA.md). Sin él, la app
+funciona igual pero con los datos solo en el dispositivo. Desde el menú se puede guardar una copia de seguridad.
 
 ## Dirección de la app
 
@@ -45,6 +52,8 @@ node tools/test-plazos.mjs     # casos de cálculo (puente, 15:00, sábado, agos
 node tools/e2e.mjs shots       # de punta a punta en un móvil simulado, con capturas en shots/
 SCHEME=dark node tools/e2e.mjs shots
 node tools/e2e-update.mjs      # versión nueva con la app instalada y arranque sin cobertura
+node tools/test-lectura.mjs    # lectura de PDF con modelos inventados (LexNET, GVA, auto penal, escrito)
+node tools/e2e-cuenta.mjs shots # cuentas, sincronización entre dos dispositivos e IA, contra tools/fake-supabase.mjs
 ```
 
 Cómo se construyó, y cómo repetirlo: [`docs/COMO-SE-HIZO.md`](docs/COMO-SE-HIZO.md).
