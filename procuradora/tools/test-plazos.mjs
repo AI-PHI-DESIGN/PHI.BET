@@ -21,12 +21,31 @@ const casos = [
   ['Semana Santa: Viernes Santo 3 abril 2026 no cuenta', { recepcion: '2026-03-30', hora: 'antes', cantidad: 5, unidad: 'dias' }, '2026-04-08', '2026-03-31', '2026-04-09'],
 ];
 let fallos = 0;
+// Primero, solo con las reglas generales (sin festivos autonómicos ni locales)
+await page.evaluate(() => { window._fz = S.festivos; S.festivos = []; });
 for (const [desc, p, vence, notif, gracia] of casos) {
   const c = await page.evaluate(p => calcular(p), p);
   const ok = c.vence === vence && c.notificada === notif && c.gracia === gracia;
   if (!ok) fallos++;
   console.log(`${ok ? 'OK ' : 'MAL'} ${desc}: notificada ${c.notificada}, vence ${c.vence}, gracia ${c.gracia}${ok ? '' : `  (esperado ${notif} / ${vence} / ${gracia})`}`);
 }
+// Comunitat Valenciana y València (festivos precargados): los locales solo cuentan en los juzgados de València
+await page.evaluate(() => { S.festivos = FESTIVOS_ZONA.map(f => ({ ...f })); });
+const VLC = 'Sección Civil del Tribunal de Instancia de Valencia. Plaza nº 25', PIC = 'Sección Civil y de Instrucción del Tribunal de Instancia de Picassent. Plaza nº 2';
+const casosCV = [
+  ['San José (19 mar 2026) no cuenta', { recepcion: '2026-03-17', hora: 'antes', cantidad: 5, unidad: 'dias', organo: PIC }, '2026-03-26'],
+  ['9 de octubre + 12 de octubre seguidos', { recepcion: '2026-10-05', hora: 'antes', cantidad: 5, unidad: 'dias', organo: PIC }, '2026-10-15'],
+  ['San Vicente Ferrer (13 abr 2026) en un juzgado de València', { recepcion: '2026-04-07', hora: 'antes', cantidad: 3, unidad: 'dias', organo: VLC }, '2026-04-14'],
+  ['San Vicente Ferrer NO cuenta en Picassent', { recepcion: '2026-04-07', hora: 'antes', cantidad: 3, unidad: 'dias', organo: PIC }, '2026-04-13'],
+  ['«Picassent (Valencia)» no se toma por València', { recepcion: '2026-04-07', hora: 'antes', cantidad: 3, unidad: 'dias', organo: 'Juzgado de Picassent (Valencia)' }, '2026-04-13'],
+  ['2027: San Juan ya no es festivo', { recepcion: '2027-06-21', hora: 'antes', cantidad: 3, unidad: 'dias', organo: PIC }, '2027-06-25'],
+];
+for (const [desc, p, vence] of casosCV) {
+  const c = await page.evaluate(p => calcular(p), p);
+  const ok = c.vence === vence; if (!ok) fallos++;
+  console.log(`${ok ? 'OK ' : 'MAL'} ${desc}: vence ${c.vence}${ok ? '' : '  (esperado ' + vence + ')'}`);
+}
+await page.evaluate(() => { S.festivos = []; });
 // Festivo local añadido por la usuaria: el 14 de octubre deja de contar
 const conLocal = await page.evaluate(() => { S.festivos = [{ fecha: '2026-10-14', nombre: 'Fiesta local' }]; const c = calcular({ recepcion: '2026-10-05', hora: 'antes', cantidad: 5, unidad: 'dias' }); S.festivos = []; return c.vence; });
 console.log(`${conLocal === '2026-10-15' ? 'OK ' : 'MAL'} Festivo local el 14 de octubre: vence ${conLocal}`); if (conLocal !== '2026-10-15') fallos++;

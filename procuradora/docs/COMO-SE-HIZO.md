@@ -185,3 +185,24 @@ Petición: «un apartado de IA para redactar mail».
   caracteres). El resultado es editable y se envía por correo, se comparte con el PDF o se copia.
 - Seguridad de gasto: desactivar el registro de cuentas nuevas en Supabase una vez creada la suya y poner límite de
   gasto en la consola de Anthropic.
+
+## 12. Festivos de la Comunitat Valenciana y festivos locales por juzgado (v1.2)
+
+Confirmado: trabaja en Valencia. Se precargan los festivos oficiales, comprobados con búsqueda web (no de memoria):
+
+| Año | Comunitat Valenciana (además de los nacionales) | València ciudad (locales) | Fuente |
+|---|---|---|---|
+| 2026 | 19 mar San José · 6 abr Lunes de Pascua · 24 jun San Juan · 9 oct | 22 ene San Vicente Mártir · 13 abr San Vicente Ferrer | Decreto 100/2025 (DOGV 7-7-2025); locales DOGV 14-11-2025 |
+| 2027 | 19 mar · 29 mar Lunes de Pascua · 9 oct (San Juan deja de ser festivo) | 22 ene · 5 abr (pendientes de publicar en el DOGV) | Decreto 42/2026 (DOGV 25-3-2026) |
+
+- **El Jueves Santo no es festivo en la Comunitat Valenciana**: se quitó el atajo que lo sugería.
+- **Los festivos locales solo cuentan en los juzgados de su localidad** (art. 182 LOPJ). Aplicarlos a todos sería
+  peligroso: en un juzgado de Picassent daría el vencimiento un día más tarde del real. Cada festivo puede llevar
+  `lugar`; `inhabil(dia, urgente, organo)` solo lo aplica si el juzgado del plazo dice «… de <lugar>» (sin tildes ni
+  mayúsculas, así «València» = «Valencia»), de modo que «Picassent (Valencia)» no se toma por València.
+- Los oficiales están en `FESTIVOS_ZONA` y se añaden una sola vez a sus festivos (`cargarFestivosZona`, con
+  `perfil.oficiales`): si borra uno, no vuelve. **Cada año**: añadir la lista nueva a `FESTIVOS_ZONA` cuando salga el
+  decreto del Consell (julio) y los locales de València (noviembre), y subir la versión.
+- En «Festivos» puede añadir las fiestas locales de otros pueblos con su localidad (sugiere las de sus juzgados).
+- `tools/test-plazos.mjs` comprueba San José, el 9 y el 12 de octubre seguidos, San Vicente Ferrer en València sí y en
+  Picassent no, y San Juan 2027.

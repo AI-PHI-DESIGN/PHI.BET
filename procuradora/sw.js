@@ -2,7 +2,7 @@
 // Al abrir la app se pide la versión del servidor con una espera corta; si la red responde, esa es la
 // que se ve (y se guarda), y si no responde a tiempo se sirve la copia guardada. El resto (iconos,
 // lector de PDF, tipografías) sale de la caché y se refresca por detrás.
-const CACHE = 'mis-plazos-v2';
+const CACHE = 'mis-plazos-v3';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png',
   './vendor/pdf.min.mjs', './vendor/pdf.worker.min.mjs'];
 const FONTS = /^https:\/\/fonts\.(googleapis|gstatic)\.com\//;

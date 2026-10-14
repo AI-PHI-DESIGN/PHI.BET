@@ -64,9 +64,9 @@ check((await A.page.inputValue('#ia-pet')).includes('traslado') && await A.page.
 await A.page.click('[data-act="iaTono"][data-v="formal"]');
 await A.page.click('[data-act="iaRedactar"]'); await espera(A.page, '#ia-cu');
 const enviado = sb.srv.stats.ia.at(-1);
-check(enviado.tono === 'formal' && enviado.contexto.includes('Vence: miércoles, 14 de octubre de 2026') && enviado.contexto.includes('Destinatario: Ana López'), 'a la IA le llegan los datos y la fecha calculada por la app');
+check(enviado.tono === 'formal' && enviado.contexto.includes('Vence: jueves, 15 de octubre de 2026') && enviado.contexto.includes('Destinatario: Ana López'), 'a la IA le llegan los datos y la fecha calculada por la app');
 check(enviado.resolucion.includes('cinco días'), 'y el texto del PDF de la notificación');
-check((await A.page.inputValue('#ia-cu')).includes('Vence el miércoles'), 'el correo redactado aparece para revisarlo');
+check((await A.page.inputValue('#ia-cu')).includes('Vence el jueves'), 'el correo redactado aparece para revisarlo');
 await shot(A.page, '07-ia');
 await A.page.evaluate(() => document.querySelector('.hero').scrollIntoView());
 await shot(A.page, '07b-ia-arriba');

@@ -39,7 +39,8 @@ Una vez instalada funciona sin cobertura, y las versiones nuevas llegan solas.
 ## Lo primero al estrenarla
 
 1. Escribir tu nombre (sale en el saludo y en la firma de los avisos).
-2. Menú ☰ → **Festivos**: añadir los festivos de tu comunidad autónoma y de tu localidad de este año.
+2. Menú ☰ → **Festivos**: ya vienen los de la Comunitat Valenciana y los locales de València (2026 y 2027). Añade
+   las fiestas locales de otros pueblos donde tengas asuntos, indicando la localidad.
 3. Menú ☰ → **Abogados**: añadir a los abogados con su correo y teléfono.
 
 > La app ayuda a no olvidar los plazos, pero la última palabra la tiene la procuradora: hay que revisar siempre el

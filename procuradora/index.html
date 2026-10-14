@@ -258,6 +258,7 @@ select.inp{appearance:none;-webkit-appearance:none;background-image:linear-gradi
 .li .s{color:var(--muted);font-weight:700;font-size:.85rem;margin-top:2px;word-break:break-word}
 .fest{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 2px;border-bottom:1px solid var(--line);font-weight:700}
 .fest:last-child{border-bottom:0}
+.fest em.lugar{font-style:normal;font-size:.72rem;font-weight:800;color:var(--acc);background:rgba(90,95,224,.12);padding:2px 8px;border-radius:8px;margin-left:4px;white-space:nowrap}
 .fest span{color:var(--muted);font-weight:700;font-size:.88rem}
 .x{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;color:var(--red)}
 .help p,.help li{line-height:1.55;font-weight:600}
@@ -321,7 +322,7 @@ select.inp{appearance:none;-webkit-appearance:none;background-image:linear-gradi
 <div id="toast" role="status" aria-live="polite"></div>
 <script>
 'use strict';
-const VERSION = 'v1.1';
+const VERSION = 'v1.2';
 // Dirección pública de la app instalable (GitHub Pages). Si cambia el repositorio, cambiar aquí.
 const APP_URL = 'https://ai-phi-design.github.io/PHI.BET/procuradora/';
 
@@ -366,20 +367,39 @@ function nacionales(y) {
 }
 const cacheNac = {};
 const nacionalDe = s => { const y = s.slice(0, 4); if (!cacheNac[y]) cacheNac[y] = new Map(nacionales(+y)); return cacheNac[y].get(s); };
+// Festivos oficiales precargados (Comunitat Valenciana y València ciudad). Fuentes: Decreto 100/2025 (DOGV 7-7-2025) y
+// Decreto 42/2026 (DOGV 25-3-2026) del Consell; locales de València 2026 en el DOGV 14-11-2025 (los de 2027, pendientes de
+// publicar). Solo los que no son ya festivos nacionales. Para un año nuevo: añadir su lista aquí y subir la versión.
+// Un festivo con «lugar» es local: solo cuenta en los plazos de los juzgados de esa localidad.
+const FESTIVOS_ZONA = [
+  ['2026-03-19', 'San José'], ['2026-04-06', 'Lunes de Pascua'], ['2026-06-24', 'San Juan'], ['2026-10-09', 'Día de la Comunitat Valenciana'],
+  ['2027-03-19', 'San José'], ['2027-03-29', 'Lunes de Pascua'], ['2027-10-09', 'Día de la Comunitat Valenciana'],
+  ['2026-01-22', 'San Vicente Mártir', 'València'], ['2026-04-13', 'San Vicente Ferrer', 'València'],
+  ['2027-01-22', 'San Vicente Mártir', 'València'], ['2027-04-05', 'San Vicente Ferrer', 'València']
+].map(([fecha, nombre, lugar]) => ({ fecha, nombre, ...(lugar ? { lugar } : {}), oficial: true }));
+// Texto sin tildes ni mayúsculas, para comparar localidades («València» = «Valencia»)
+const normal = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+// ¿El juzgado de este plazo está en la localidad del festivo? Se exige «de <localidad>» en el nombre del juzgado
+// («Tribunal de Instancia de Valencia»), para no confundir «Picassent (Valencia)» con un juzgado de València.
+const enLugar = (organo, lugar) => !!lugar && new RegExp('\\bde\\s+' + normal(lugar).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b').test(normal(organo));
 // Devuelve por qué un día es inhábil ('' si es hábil).
 // urgente = asunto en el que agosto y del 24 dic al 6 ene sí cuentan (art. 183 LOPJ, salvo urgentes).
-function inhabil(s, urgente) {
+// organo = juzgado del plazo: los festivos locales solo cuentan si es de esa localidad.
+function inhabil(s, urgente, organo) {
   const p = partes(s);
   if (!urgente && p.m === 8) return 'agosto';
   if (!urgente && ((p.m === 12 && p.d >= 24) || (p.m === 1 && p.d <= 6))) return 'Navidad (24 dic – 6 ene)';
   if (p.m === 12 && (p.d === 24 || p.d === 31)) return p.d + ' de diciembre';
   if (p.w === 6 || p.w === 0) return 'fin de semana';
   const n = nacionalDe(s); if (n) return n;
-  const f = S.festivos.find(x => x.fecha === s); if (f) return f.nombre || 'festivo';
+  const f = S.festivos.find(x => x.fecha === s && (!x.lugar || enLugar(organo, x.lugar)));
+  if (f) return (f.nombre || 'festivo') + (f.lugar ? ` (festivo local de ${f.lugar})` : '');
   return '';
 }
-const sigHabil = (s, urg, seq) => { let d = addDias(s, 1); while (inhabil(d, urg)) { if (seq) seq.push({ k: 'salto', fecha: d, motivo: inhabil(d, urg) }); d = addDias(d, 1); } return d; };
-const habilesEntre = (a, b, urg) => { let n = 0, d = a; while (d < b) { d = addDias(d, 1); if (!inhabil(d, urg)) n++; } return n; };
+// Festivo local de algún sitio ese día (para enseñarlo en el calendario)
+const festLocal = s => S.festivos.filter(x => x.fecha === s && x.lugar);
+const sigHabil = (s, urg, seq, org) => { let d = addDias(s, 1); while (inhabil(d, urg, org)) { if (seq) seq.push({ k: 'salto', fecha: d, motivo: inhabil(d, urg, org) }); d = addDias(d, 1); } return d; };
+const habilesEntre = (a, b, urg, org) => { let n = 0, d = a; while (d < b) { d = addDias(d, 1); if (!inhabil(d, urg, org)) n++; } return n; };
 
 /* ---------- el cálculo del plazo ----------
    1. Recepción en LexNET. Si llega después de las 15:00 o en día inhábil, cuenta como recibida el día hábil siguiente.
@@ -389,17 +409,17 @@ const habilesEntre = (a, b, urg) => { let n = 0, d = a; while (d < b) { d = addD
       · Por meses: de fecha a fecha (art. 133.3 LEC); si acaba en inhábil, pasa al siguiente hábil.
    4. Día de gracia: se puede presentar hasta las 15:00 del día hábil siguiente al vencimiento (art. 135.5 LEC). */
 function calcular(p) {
-  const urg = !!p.urgente, seq = [];
+  const urg = !!p.urgente, org = p.organo || '', seq = [];
   const cant = Math.max(1, Math.floor(Number(p.cantidad) || 0));
   if (!validFecha(p.recepcion)) return null;
   seq.push({ k: 'rec', fecha: p.recepcion, tarde: p.hora === 'despues' });
   let rec = p.recepcion;
-  if (inhabil(rec, urg) || p.hora === 'despues') {
-    if (inhabil(rec, urg)) seq.push({ k: 'salto', fecha: rec, motivo: inhabil(rec, urg) });
-    rec = sigHabil(rec, urg, seq);
-    seq.push({ k: 'recEf', fecha: rec, porHora: p.hora === 'despues' && !inhabil(p.recepcion, urg) });
+  if (inhabil(rec, urg, org) || p.hora === 'despues') {
+    if (inhabil(rec, urg, org)) seq.push({ k: 'salto', fecha: rec, motivo: inhabil(rec, urg, org) });
+    rec = sigHabil(rec, urg, seq, org);
+    seq.push({ k: 'recEf', fecha: rec, porHora: p.hora === 'despues' && !inhabil(p.recepcion, urg, org) });
   }
-  const notificada = sigHabil(rec, urg, seq);
+  const notificada = sigHabil(rec, urg, seq, org);
   seq.push({ k: 'not', fecha: notificada });
   let vence;
   if (p.unidad === 'meses') {
@@ -408,13 +428,13 @@ function calcular(p) {
     const t = new Date(Date.UTC(q.y, q.m - 1 + cant, Math.min(q.d, mesFin)));
     vence = fromD(t);
     seq.push({ k: 'mes', fecha: vence, n: cant });
-    while (inhabil(vence, urg)) { seq.push({ k: 'salto', fecha: vence, motivo: inhabil(vence, urg) }); vence = addDias(vence, 1); }
+    while (inhabil(vence, urg, org)) { seq.push({ k: 'salto', fecha: vence, motivo: inhabil(vence, urg, org) }); vence = addDias(vence, 1); }
   } else {
     let d = notificada, n = 0;
-    while (n < cant) { d = addDias(d, 1); const m = inhabil(d, urg); if (m) seq.push({ k: 'salto', fecha: d, motivo: m }); else { n++; seq.push({ k: 'dia', fecha: d, n }); } }
+    while (n < cant) { d = addDias(d, 1); const m = inhabil(d, urg, org); if (m) seq.push({ k: 'salto', fecha: d, motivo: m }); else { n++; seq.push({ k: 'dia', fecha: d, n }); } }
     vence = d;
   }
-  const gracia = sigHabil(vence, urg);
+  const gracia = sigHabil(vence, urg, null, org);
   seq.push({ k: 'vence', fecha: vence }, { k: 'gracia', fecha: gracia });
   const saltaVacaciones = seq.some(x => x.k === 'salto' && (x.motivo === 'agosto' || x.motivo.startsWith('Navidad')));
   return { recibida: rec, notificada, vence, gracia, seq, cant, saltaVacaciones };
@@ -458,7 +478,7 @@ function estado(p, c) {
   if (t > c.gracia) return { k: 'vencido', n: 0, c };
   if (t > c.vence) return { k: 'gracia', n: 0, c };
   if (t === c.vence) return { k: 'hoy', n: 0, c };
-  const n = habilesEntre(t, c.vence, p.urgente);
+  const n = habilesEntre(t, c.vence, p.urgente, p.organo);
   return { k: n <= 3 ? 'pronto' : 'tiempo', n, c };
 }
 const textoEstado = e => ({
@@ -672,6 +692,7 @@ async function iniciarSesion(s) {
   await Store.setKV('owner', N.ses.user.id);
   go({ name: 'home' }, true);
   await sincronizar();
+  await cargarFestivosZona();
   if (!S.perfil.visto && !S.perfil.nombre) bienvenida();
 }
 async function borrarLocal() {
@@ -985,7 +1006,7 @@ function vCalendario() {
     pills += `<button class="pill${inhabil(s, false) ? ' inh' : ''}${s === S.calDia ? ' sel' : ''}" data-act="dia" data-d="${s}" aria-label="${fLarga(s)}">${pend.length ? `<i class="pd" style="background:${COLOR[pend[0].e.k]}"></i>` : ''}${q.d}<small>${MESES_C[q.m - 1]}</small></button>`;
   }
   const delDia = (porDia[S.calDia] || []).sort((a, b) => a.p.hecho - b.p.hecho);
-  const motivo = inhabil(S.calDia, false);
+  const motivo = inhabil(S.calDia, false) || festLocal(S.calDia).map(f => `${f.nombre}, festivo local de ${f.lugar} (solo para sus juzgados)`).join(' · ');
   return `<section class="hero compact">${topbar('Calendario', { menu: true })}${waveSVG()}</section>
   <section class="sec" style="padding-bottom:6px">
     <div class="mhead"><button class="rbtn" data-act="mes" data-n="-1" aria-label="Mes anterior">${I.left}</button><h2>${may(MESES[m - 1])} ${y}</h2><button class="rbtn" data-act="mes" data-n="1" aria-label="Mes siguiente">${I.right}</button></div>
@@ -1032,21 +1053,25 @@ function abogadoSheet(a, alGuardar) {
 /* ---- festivos ---- */
 function vFestivos() {
   const y = S.festYear || +hoy().slice(0, 4);
-  const propios = S.festivos.filter(f => f.fecha.startsWith(y + '')).sort((a, b) => a.fecha < b.fecha ? -1 : 1);
-  const js = addDias(pascua(y), -3), lp = addDias(pascua(y), 1);
-  const ya = s => S.festivos.some(f => f.fecha === s);
+  const delAno = S.festivos.filter(f => f.fecha.startsWith(y + '')).sort((a, b) => a.fecha < b.fecha ? -1 : 1);
+  const fila = f => `<div class="fest"><div>${esc(f.nombre || 'Festivo')}${f.lugar ? ` <em class="lugar">solo juzgados de ${esc(f.lugar)}</em>` : ''}<br><span>${fLarga(f.fecha)}</span></div><button class="x" data-act="delFest" data-d="${f.fecha}" data-l="${esc(f.lugar || '')}" aria-label="Quitar ${esc(f.nombre || 'festivo')}">${I.trash}</button></div>`;
+  const oficiales = delAno.filter(f => f.oficial), propios = delAno.filter(f => !f.oficial);
+  const pendiente = !FESTIVOS_ZONA.some(f => f.fecha.startsWith(y + ''));
+  // localidades que salen en sus juzgados («Tribunal de Instancia de Picassent» → Picassent), para elegir rápido
+  const lugares = [...new Set(S.plazos.map(p => (String(p.organo || '').match(/Instancia de ([^.,(]+)/i) || [])[1]).filter(Boolean).map(l => l.trim()))];
   return `<section class="hero compact">${topbar('Festivos')}${waveSVG()}</section>
   <section class="sec">
     <div class="mhead"><button class="rbtn" data-act="festYear" data-n="-1" aria-label="Año anterior">${I.left}</button><h2>${y}</h2><button class="rbtn" data-act="festYear" data-n="1" aria-label="Año siguiente">${I.right}</button></div>
-    <div class="card"><h3>Tus festivos</h3><p class="sub">Los de tu comunidad autónoma y los de tu localidad. Cada año salen en el boletín oficial: añádelos aquí para que no cuenten en los plazos.</p>
-      ${propios.map(f => `<div class="fest"><div>${esc(f.nombre || 'Festivo')}<br><span>${fLarga(f.fecha)}</span></div><button class="x" data-act="delFest" data-d="${f.fecha}" aria-label="Quitar">${I.trash}</button></div>`).join('') || '<p class="sub" style="margin:0">Aún no has añadido ninguno de ' + y + '.</p>'}
-      <label class="lb">Añadir un festivo</label>
+    <div class="card"><h3>Comunitat Valenciana y València</h3>
+      <p class="sub">${pendiente ? `Los de ${y} aún no están cargados. Cuando salgan en el DOGV, añádelos abajo (o pide que se actualice la app).` : 'Ya cargados del DOGV. Los locales de València solo cuentan en los plazos de los juzgados de València.'}</p>
+      ${oficiales.map(fila).join('')}</div>
+    <div class="card"><h3>Otros festivos</h3><p class="sub">Por ejemplo, las fiestas locales de Picassent, Quart de Poblet u otros pueblos donde tengas asuntos. Pon la localidad para que solo cuenten en sus juzgados.</p>
+      ${propios.map(fila).join('') || `<p class="sub" style="margin:0">Ninguno añadido en ${y}.</p>`}
+      <label class="lb" for="fe-d">Añadir un festivo</label>
       <div class="row2"><input class="inp" type="date" id="fe-d" value="${y}-01-01" aria-label="Fecha"><input class="inp" id="fe-n" placeholder="Nombre" aria-label="Nombre del festivo"></div>
-      <div style="height:12px"></div><button class="btn soft" data-act="addFest">+ Añadir</button>
-      <div class="chips" style="margin-top:16px">
-        ${ya(js) ? '' : `<button class="chip" data-act="quickFest" data-d="${js}" data-n="Jueves Santo">+ Jueves Santo<small>${fCorta(js)} · en casi todas las comunidades</small></button>`}
-        ${ya(lp) ? '' : `<button class="chip" data-act="quickFest" data-d="${lp}" data-n="Lunes de Pascua">+ Lunes de Pascua<small>${fCorta(lp)} · en algunas comunidades</small></button>`}
-      </div></div>
+      <label class="lb" for="fe-l">Localidad<small>Déjalo vacío si es de toda la Comunitat.</small></label>
+      <input class="inp" id="fe-l" list="fe-lugares" placeholder="Ej.: Picassent"><datalist id="fe-lugares">${lugares.map(l => `<option value="${esc(l)}">`).join('')}</datalist>
+      <div style="height:12px"></div><button class="btn soft" data-act="addFest">+ Añadir</button></div>
     <div class="card"><h3>Ya incluidos siempre</h3><p class="sub">No hace falta que los añadas.</p>
       <div class="fest"><div>Sábados y domingos</div></div>
       <div class="fest"><div>Todo agosto<br><span>salvo asuntos urgentes</span></div></div>
@@ -1054,6 +1079,14 @@ function vFestivos() {
       ${nacionales(y).map(([f, n]) => `<div class="fest"><div>${esc(n)}<br><span>${fLarga(f)}</span></div></div>`).join('')}
     </div>
   </section>`;
+}
+// Añade los festivos oficiales que aún no estén (una sola vez cada uno: si ella borra uno, no vuelve a aparecer)
+async function cargarFestivosZona() {
+  const vistos = new Set(S.perfil.oficiales || []), nuevos = FESTIVOS_ZONA.filter(f => !vistos.has(f.fecha + '|' + (f.lugar || '')));
+  if (!nuevos.length) return;
+  for (const f of nuevos) if (!S.festivos.some(x => x.fecha === f.fecha && (x.lugar || '') === (f.lugar || ''))) S.festivos.push({ ...f });
+  S.perfil.oficiales = [...vistos, ...nuevos.map(f => f.fecha + '|' + (f.lugar || ''))];
+  await saveKV('festivos'); await saveKV('perfil');
 }
 
 /* ---- cuenta ---- */
@@ -1486,13 +1519,13 @@ document.addEventListener('click', async e => {
     case 'dia': S.calDia = b.dataset.d; S.calMes = S.calDia.slice(0, 7); return render();
     case 'mes': { const [y, m] = S.calMes.split('-').map(Number); const nd = new Date(Date.UTC(y, m - 1 + Number(b.dataset.n), 1)); S.calMes = fromD(nd).slice(0, 7); S.calDia = S.calMes === hoy().slice(0, 7) ? hoy() : S.calMes + '-01'; return render(); }
     case 'festYear': S.festYear = (S.festYear || +hoy().slice(0, 4)) + Number(b.dataset.n); return render();
-    case 'addFest': case 'quickFest': {
-      const f = act === 'quickFest' ? b.dataset.d : $('#fe-d').value, n = act === 'quickFest' ? b.dataset.n : $('#fe-n').value.trim();
+    case 'addFest': {
+      const f = $('#fe-d').value, n = $('#fe-n').value.trim(), l = $('#fe-l').value.trim();
       if (!validFecha(f)) return toast('Elige la fecha');
-      if (S.festivos.some(x => x.fecha === f) || nacionalDe(f)) return toast('Ese día ya es festivo');
-      S.festivos.push({ fecha: f, nombre: n || 'Festivo local' }); await saveKV('festivos'); toast('Festivo añadido'); return render();
+      if (S.festivos.some(x => x.fecha === f && normal(x.lugar) === normal(l)) || (!l && nacionalDe(f))) return toast('Ese día ya es festivo');
+      S.festivos.push({ fecha: f, nombre: n || (l ? 'Fiesta local' : 'Festivo'), ...(l ? { lugar: l } : {}) }); await saveKV('festivos'); toast('Festivo añadido'); return render();
     }
-    case 'delFest': S.festivos = S.festivos.filter(x => x.fecha !== b.dataset.d); await saveKV('festivos'); return render();
+    case 'delFest': S.festivos = S.festivos.filter(x => !(x.fecha === b.dataset.d && (x.lugar || '') === b.dataset.l)); await saveKV('festivos'); return render();
     case 'guardarPerfil': S.perfil.nombre = $('#pf-n').value.trim(); S.perfil.firma = $('#pf-f').value.trim(); await saveKV('perfil'); toast('Guardado'); return back();
     case 'lgModo': S.lgModo = b.dataset.v; S.lgEmail = ($('#lg-e') || {}).value || S.lgEmail; return render();
     case 'ojo': { const i = $('#lg-p') || $('#cl-p'); i.type = i.type === 'password' ? 'text' : 'password'; b.setAttribute('aria-label', i.type === 'password' ? 'Ver la contraseña' : 'Ocultar la contraseña'); return; }
@@ -1532,7 +1565,7 @@ document.addEventListener('input', e => {
   const f = el.dataset && el.dataset.f; if (!f || !S.draft) return;
   S.draft[f] = el.value;
   if (f === 'cantidad' || f === 'actuacion') document.querySelectorAll('.chip').forEach(x => x.classList.toggle('on', x.dataset.n === S.draft.actuacion && +x.dataset.d === Number(S.draft.cantidad) && S.draft.unidad === 'dias'));
-  if (f === 'recepcion' || f === 'cantidad') pintaCalculo();
+  if (f === 'recepcion' || f === 'cantidad' || f === 'organo') pintaCalculo();
 });
 document.addEventListener('change', e => { if (/^ia-(plazo|para)$/.test(e.target.id)) { leerIA(); if (e.target.id === 'ia-plazo') { const pl = findPlazo(S.ia.plazoId); if (pl && pl.abogadoId) S.ia.para = pl.abogadoId; } render(); } });
 document.addEventListener('submit', e => { if (e.target.id === 'lg-form') { e.preventDefault(); enviarLogin(); } });
@@ -1559,11 +1592,11 @@ window.addEventListener('appinstalled', () => { installPrompt = null; toast('App
   history.replaceState({ name: 'home' }, ''); render();
   if (nubeActiva()) {
     await enlaceCorreo();
-    if (N.ses) sincronizar().then(() => { if (!S.perfil.visto && !S.perfil.nombre && !$('#ov').innerHTML) bienvenida(); });
+    if (N.ses) sincronizar().then(async () => { await cargarFestivosZona(); if (!S.perfil.visto && !S.perfil.nombre && !$('#ov').innerHTML) bienvenida(); });
     window.addEventListener('online', () => sincronizar());
     document.addEventListener('visibilitychange', () => { if (!document.hidden) sincronizar(); });
     setInterval(() => { if (!document.hidden) sincronizar(); }, 60000);
-  } else if (!S.perfil.visto && !S.plazos.length) bienvenida();
+  } else { await cargarFestivosZona(); if (!S.perfil.visto && !S.plazos.length) bienvenida(); }
   if (window.claude && typeof window.claude.use === 'function') { try { downloadsNS = await window.claude.use('downloads'); } catch { downloadsNS = null; } }
   if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !enArtefacto()) {
     navigator.serviceWorker.register('sw.js').then(reg => {

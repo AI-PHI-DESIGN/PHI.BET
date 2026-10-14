@@ -28,7 +28,8 @@ await shot('00-bienvenida');
 await page.fill('#bv-n', 'Carmen');
 await page.click('#bv-ok');
 await page.waitForSelector('text=Aún no hay plazos');
-check(await page.isVisible('text=Carmen'), 'saluda por el nombre');
+await page.waitForSelector('.hello >> text=Carmen', { timeout: 5000 });
+check(true, 'saluda por el nombre');
 await shot('01-inicio-vacio');
 
 // Nueva notificación con PDF
@@ -43,14 +44,14 @@ check((await v('cliente')).includes('contra'), 'lee las partes: ' + await v('cli
 check(await v('cantidad') === '5', 'lee el plazo de cinco días');
 check(await v('recepcion') === '2026-10-05', 'lee la fecha de envío de la carátula');
 check((await v('actuacion')).toLowerCase().includes('alega'), 'propone la actuación: ' + await v('actuacion'));
-check(await page.isVisible('.result >> text=Miércoles, 14 de octubre de 2026'), 'calcula el vencimiento (14 oct, con el puente del 12)');
+check(await page.isVisible('.result >> text=Jueves, 15 de octubre de 2026'), 'calcula el vencimiento (15 oct: no cuentan el 9 de octubre ni el 12)');
 await shot('02-nueva-leida');
 await page.evaluate(() => document.querySelector('#calc').scrollIntoView());
 await shot('03-nueva-calculo');
 
 // Cambiar a "después de las 15:00" mueve el cálculo un día
 await page.click('[data-act="hora"][data-v="despues"]');
-check(await page.isVisible('.result >> text=Jueves, 15 de octubre de 2026'), 'después de las 15:00 vence un día más tarde');
+check(await page.isVisible('.result >> text=Viernes, 16 de octubre de 2026'), 'después de las 15:00 vence un día más tarde');
 await page.click('[data-act="hora"][data-v="antes"]');
 
 // Abogado nuevo desde el formulario
@@ -61,21 +62,21 @@ await page.waitForFunction(() => document.querySelector('[data-f="abogadoId"]').
 check(true, 'el abogado nuevo queda elegido');
 await page.click('[data-act="guardar"]');
 await page.waitForSelector('.d-title');
-check(await page.isVisible('text=Vence el miércoles, 14 de octubre de 2026'), 'ficha del plazo con el vencimiento');
-check(await page.isVisible('text=Quedan 3 días hábiles'), 'cuenta los días hábiles que quedan (9, 13 y 14)');
+check(await page.isVisible('text=Vence el jueves, 15 de octubre de 2026'), 'ficha del plazo con el vencimiento');
+check(await page.isVisible('text=Quedan 3 días hábiles'), 'cuenta los días hábiles que quedan (13, 14 y 15)');
 await shot('04-ficha');
 
 // Avisar al abogado
 await page.click('[data-act="avisar"]');
 const aviso = await page.inputValue('#av-t');
-check(aviso.includes('Hola Ana') && aviso.includes('Vence: miércoles, 14 de octubre de 2026') && aviso.includes('15:00 del jueves, 15 de octubre'), 'texto del aviso al abogado');
+check(aviso.includes('Hola Ana') && aviso.includes('Vence: jueves, 15 de octubre de 2026') && aviso.includes('15:00 del viernes, 16 de octubre'), 'texto del aviso al abogado');
 await shot('05-avisar');
 await page.click('.sclose');
 
 // Calendario .ics
 const [dl] = await Promise.all([page.waitForEvent('download'), page.click('[data-act="ics"]')]);
 const ics = readFileSync(await dl.path(), 'utf8');
-check(ics.includes('DTSTART;VALUE=DATE:20261014') && ics.includes('BEGIN:VALARM'), 'archivo de calendario con aviso');
+check(ics.includes('DTSTART;VALUE=DATE:20261015') && ics.includes('BEGIN:VALARM'), 'archivo de calendario con aviso');
 
 // Un segundo plazo a mano, que vence hoy, y uno con tiempo
 for (const [rec, act, n] of [['2026-09-29', 'Recurso de reposición', 6], ['2026-10-07', 'Contestar demanda (ordinario)', 20]]) {
@@ -104,20 +105,24 @@ await page.fill('#q', '');
 // Calendario
 await page.click('[data-go="calendario"]');
 await page.waitForSelector('.grid');
-await page.click('.day[data-d="2026-10-14"]');
-check(await page.isVisible('.dcard >> text=Alegaciones'), 'el calendario enseña lo que vence el 14');
+await page.click('.day[data-d="2026-10-15"]');
+check(await page.isVisible('.dcard >> text=Alegaciones'), 'el calendario enseña lo que vence el 15');
 await page.click('.day[data-d="2026-10-12"]');
 check(await page.isVisible('text=Fiesta Nacional de España'), 'el 12 de octubre sale como inhábil');
-await page.click('.day[data-d="2026-10-14"]');
+await page.click('.day[data-d="2026-10-09"]');
+check(await page.isVisible('text=Día de la Comunitat Valenciana'), 'el 9 de octubre sale como festivo de la Comunitat');
+await page.click('.day[data-d="2026-10-15"]');
 await shot('07-calendario');
 
 // Menú, festivos y ayuda
 await page.click('[data-act="menu"]'); await page.waitForSelector('.drawer');
 await shot('08-menu');
-await page.click('.drawer [data-go="festivos"]'); await page.waitForSelector('text=Tus festivos');
-await page.click('[data-act="quickFest"]');
-await page.waitForSelector('.fest >> text=Jueves Santo', { timeout: 5000 });
-check(true, 'añade Jueves Santo con un toque');
+await page.click('.drawer [data-go="festivos"]'); await page.waitForSelector('text=Otros festivos');
+check(await page.isVisible('.fest >> text=San Vicente Ferrer') && await page.isVisible('.fest >> text=solo juzgados de València'), 'vienen cargados los festivos de la Comunitat y los locales de València');
+check(!(await page.isVisible('.fest >> text=Jueves Santo')), 'el Jueves Santo no aparece (no es festivo en la Comunitat Valenciana)');
+await page.fill('#fe-d', '2026-11-13'); await page.fill('#fe-n', 'Fiesta local'); await page.fill('#fe-l', 'Picassent'); await page.click('[data-act="addFest"]');
+await page.waitForSelector('.fest >> text=solo juzgados de Picassent', { timeout: 5000 });
+check(true, 'añade un festivo local de Picassent');
 await shot('09-festivos');
 await page.goto(`http://127.0.0.1:${port}/`); await page.waitForSelector('.pcard');
 await page.click('[data-go="ayuda"]'); await page.waitForSelector('text=Paso a paso');
